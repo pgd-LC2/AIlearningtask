@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .mesh-gradient-blue-purple-pink {
+    background-color: #f8fafc;
+    background-image:
+      radial-gradient(at 0% 0%, hsla(217, 91%, 95%, 1) 0px, transparent 50%),
+      radial-gradient(at 50% 0%, hsla(271, 91%, 95%, 1) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(351, 91%, 95%, 1) 0px, transparent 50%);
+  }
+}
