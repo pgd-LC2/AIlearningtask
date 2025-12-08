@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   Heading, Type, Columns, List, CheckSquare,
   TextCursorInput, MessageSquare, Gift, Code, ChevronDown, ChevronRight,
-  Image, Video, Minus, MessageCircle, Link
+  Image, Video, Minus, MessageCircle, Link, Wand2
 } from 'lucide-react';
 import { LessonComponent } from '../../types';
 
@@ -62,6 +62,43 @@ export default function ComponentLibrary({ onAddComponent }: ComponentLibraryPro
         };
       case 'hyperlink':
         return { id, type, config: { text: '点击这里', url: '', openInNewTab: true } };
+      case 'ai-html-generator':
+        return {
+          id,
+          type,
+          config: {
+            title: 'AI HTML 游戏生成器',
+            description: '填写下面的参数，让 AI 帮你生成自定义的 HTML 游戏',
+            promptTemplate: '请创建一个完整的、可交互的 HTML 游戏。要求：\n\n游戏类型：{{gameType}}\n题目来源：{{questionSource}}\n游戏规则：每次随机从题库中抽取一道题目\n\n请生成包含完整 HTML、CSS 和 JavaScript 的代码，确保游戏可以独立运行。代码必须放在 ```html 代码块中。使用现代、美观的设计，包含适当的动画效果。',
+            parameters: [
+              {
+                id: 'param-1',
+                label: '游戏类型',
+                name: 'gameType',
+                type: 'select',
+                options: ['选择题', '填空题', '配对游戏', '记忆翻牌'],
+                required: true
+              },
+              {
+                id: 'param-2',
+                label: '题目来源',
+                name: 'questionSource',
+                type: 'text',
+                placeholder: '例如：语文课本第一单元',
+                required: true
+              },
+              {
+                id: 'param-3',
+                label: '主题色',
+                name: 'themeColor',
+                type: 'color',
+                required: false
+              }
+            ],
+            model: 'doubao-seed-code-preview-251028',
+            buttonText: '生成 HTML 游戏'
+          }
+        };
       default:
         return { id, type, config: {} };
     }
@@ -121,6 +158,7 @@ export default function ComponentLibrary({ onAddComponent }: ComponentLibraryPro
       color: 'cyan',
       components: [
         { type: 'ai-chatbox', icon: MessageCircle, label: 'AI 聊天框' },
+        { type: 'ai-html-generator', icon: Wand2, label: 'AI HTML 生成器' },
       ],
     },
   ];

@@ -746,6 +746,230 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
         </div>
       );
 
+    case 'ai-html-generator':
+      const [paramValues, setParamValues] = useState<Record<string, string>>({});
+      const [isGenerating, setIsGenerating] = useState(false);
+      const [aiOutput, setAiOutput] = useState('');
+      const [generatedHtml, setGeneratedHtml] = useState('');
+      const [showThinking, setShowThinking] = useState(true);
+      const htmlIframeRef = useRef<HTMLIFrameElement>(null);
+
+      const renderHtmlInIframe = (html: string) => {
+        if (htmlIframeRef.current && html) {
+          const iframe = htmlIframeRef.current;
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (doc) {
+            doc.open();
+            const isFullDoc = /<!DOCTYPE|<html/i.test(html);
+            if (isFullDoc) {
+              doc.write(html);
+            } else {
+              doc.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                  <meta charset="UTF-8">
+                  <style>
+                    body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; overflow: auto; }
+                  </style>
+                </head>
+                <body>
+                  ${html}
+                </body>
+                </html>
+              `);
+            }
+            doc.close();
+          }
+        }
+      };
+
+      useEffect(() => {
+        if (generatedHtml) {
+          renderHtmlInIframe(generatedHtml);
+        }
+      }, [generatedHtml]);
+
+      const extractHtmlFromOutput = (text: string): string => {
+        const htmlBlockMatch = text.match(/```html\n([\s\S]*?)\n```/);
+        if (htmlBlockMatch) {
+          return htmlBlockMatch[1];
+        }
+        const htmlMatch = text.match(/<html[\s\S]*<\/html>/i);
+        if (htmlMatch) {
+          return htmlMatch[0];
+        }
+        return '';
+      };
+
+      const handleGenerate = async () => {
+        const missingRequired = (component.config.parameters || []).filter(
+          p => p.required && !paramValues[p.name]?.trim()
+        );
+
+        if (missingRequired.length > 0) {
+          alert(`请填写必填项：${missingRequired.map(p => p.label).join('、')}`);
+          return;
+        }
+
+        setIsGenerating(true);
+        setAiOutput('');
+        setGeneratedHtml('');
+
+        let promptText = component.config.promptTemplate || '';
+        Object.entries(paramValues).forEach(([key, value]) => {
+          promptText = promptText.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+        });
+
+        try {
+          await callVolcengineStream(
+            {
+              model: component.config.model || 'doubao-seed-code-preview-251028',
+              messages: [
+                { role: 'user', content: promptText }
+              ],
+              stream: true
+            },
+            (text, isThinking) => {
+              if (!isThinking) {
+                setAiOutput(prev => {
+                  const newOutput = prev + text;
+                  const extractedHtml = extractHtmlFromOutput(newOutput);
+                  if (extractedHtml && extractedHtml !== generatedHtml) {
+                    setGeneratedHtml(extractedHtml);
+                  }
+                  return newOutput;
+                });
+              }
+            },
+            () => {
+              setIsGenerating(false);
+            },
+            (error: Error) => {
+              console.error('AI 生成错误:', error);
+              alert('生成失败，请重试');
+              setIsGenerating(false);
+            }
+          );
+        } catch (error) {
+          console.error('AI 生成错误:', error);
+          alert('生成失败，请重试');
+          setIsGenerating(false);
+        }
+      };
+
+      const canGenerate = !isGenerating && (component.config.parameters || []).every(
+        p => !p.required || paramValues[p.name]?.trim()
+      );
+
+      return (
+        <div className="space-y-4">
+          {component.config.title && (
+            <h3 className="text-lg font-semibold text-gray-900">{component.config.title}</h3>
+          )}
+          {component.config.description && (
+            <p className="text-sm text-gray-600">{component.config.description}</p>
+          )}
+
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+            {(component.config.parameters || []).map((param) => (
+              <div key={param.id}>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  {param.label}
+                  {param.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                {param.type === 'text' && (
+                  <input
+                    type="text"
+                    value={paramValues[param.name] || ''}
+                    onChange={(e) => setParamValues({ ...paramValues, [param.name]: e.target.value })}
+                    placeholder={param.placeholder}
+                    className="w-full px-3 h-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+                  />
+                )}
+                {param.type === 'select' && (
+                  <select
+                    value={paramValues[param.name] || ''}
+                    onChange={(e) => setParamValues({ ...paramValues, [param.name]: e.target.value })}
+                    className="w-full px-3 h-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+                  >
+                    <option value="">请选择...</option>
+                    {(param.options || []).map((option, idx) => (
+                      <option key={idx} value={option}>{option}</option>
+                    ))}
+                  </select>
+                )}
+                {param.type === 'color' && (
+                  <input
+                    type="color"
+                    value={paramValues[param.name] || '#3b82f6'}
+                    onChange={(e) => setParamValues({ ...paramValues, [param.name]: e.target.value })}
+                    className="w-full h-10 border border-gray-300 rounded-lg cursor-pointer"
+                  />
+                )}
+              </div>
+            ))}
+
+            <button
+              onClick={handleGenerate}
+              disabled={!canGenerate}
+              className="w-full h-12 bg-gradient-to-r from-cyan-500 to-teal-500 text-white font-medium rounded-full hover:from-cyan-600 hover:to-teal-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  正在生成...
+                </>
+              ) : (
+                <>{component.config.buttonText || '生成 HTML 游戏'}</>
+              )}
+            </button>
+          </div>
+
+          {aiOutput && (
+            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium text-gray-900">AI 输出</h4>
+                <button
+                  onClick={() => setShowThinking(!showThinking)}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  {showThinking ? '隐藏' : '显示'}
+                </button>
+              </div>
+              {showThinking && (
+                <div className="bg-gray-50 rounded-lg p-3 max-h-60 overflow-y-auto">
+                  <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono">{aiOutput}</pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {generatedHtml && (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="bg-gradient-to-r from-cyan-500 to-teal-500 px-4 py-2.5 flex items-center justify-between">
+                <h4 className="font-medium text-white">渲染结果</h4>
+                <button
+                  onClick={() => setGeneratedHtml('')}
+                  className="text-xs text-white/90 hover:text-white px-2 py-1 bg-white/20 rounded"
+                >
+                  清除
+                </button>
+              </div>
+              <div className="border-t border-gray-200">
+                <iframe
+                  ref={htmlIframeRef}
+                  className="w-full border-0"
+                  style={{ minHeight: '400px', height: '600px' }}
+                  sandbox="allow-scripts allow-same-origin"
+                  title="Generated HTML"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      );
+
     default:
       return <div>未知组件类型</div>;
   }

@@ -860,6 +860,267 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
           </div>
         );
 
+      case 'ai-html-generator': {
+        const handleAddParameter = () => {
+          const newParam = {
+            id: `param-${Date.now()}`,
+            label: '',
+            name: '',
+            type: 'text' as const,
+            required: false
+          };
+          setFormData({
+            ...formData,
+            parameters: [...(formData.parameters || []), newParam]
+          });
+        };
+
+        const handleRemoveParameter = (id: string) => {
+          setFormData({
+            ...formData,
+            parameters: (formData.parameters || []).filter(p => p.id !== id)
+          });
+        };
+
+        const handleParameterChange = (id: string, field: string, value: any) => {
+          setFormData({
+            ...formData,
+            parameters: (formData.parameters || []).map(p =>
+              p.id === id ? { ...p, [field]: value } : p
+            )
+          });
+        };
+
+        const handleAddOption = (paramId: string) => {
+          setFormData({
+            ...formData,
+            parameters: (formData.parameters || []).map(p =>
+              p.id === paramId ? { ...p, options: [...(p.options || []), ''] } : p
+            )
+          });
+        };
+
+        const handleRemoveOption = (paramId: string, optionIndex: number) => {
+          setFormData({
+            ...formData,
+            parameters: (formData.parameters || []).map(p =>
+              p.id === paramId ? { ...p, options: (p.options || []).filter((_, i) => i !== optionIndex) } : p
+            )
+          });
+        };
+
+        const handleOptionChange = (paramId: string, optionIndex: number, value: string) => {
+          setFormData({
+            ...formData,
+            parameters: (formData.parameters || []).map(p =>
+              p.id === paramId ? {
+                ...p,
+                options: (p.options || []).map((opt, i) => i === optionIndex ? value : opt)
+              } : p
+            )
+          });
+        };
+
+        return (
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">标题</label>
+              <input
+                type="text"
+                value={formData.title || ''}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-3 h-9 border-2 border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-gray-900 text-sm"
+                placeholder="AI HTML 游戏生成器"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">描述</label>
+              <input
+                type="text"
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-3 h-9 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-gray-900 text-sm"
+                placeholder="填写参数后生成 HTML"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">提示词模板</label>
+              <textarea
+                value={formData.promptTemplate || ''}
+                onChange={(e) => setFormData({ ...formData, promptTemplate: e.target.value })}
+                rows={6}
+                className="w-full px-3 py-2 border-2 border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none text-gray-900 text-sm font-mono"
+                placeholder="使用 {{参数名}} 作为占位符，例如：游戏类型：{{gameType}}"
+              />
+              <p className="mt-1 text-xs text-gray-500">提示：使用双花括号包裹参数名，如 {`{{gameType}}`}</p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-medium text-gray-700">参数字段</label>
+                <button
+                  type="button"
+                  onClick={handleAddParameter}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  添加参数
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {(formData.parameters || []).map((param, index) => (
+                  <div key={param.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-600">参数 {index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveParameter(param.id)}
+                        disabled={(formData.parameters || []).length <= 1}
+                        className="p-1 hover:bg-red-50 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="删除参数"
+                      >
+                        <Minus className="w-4 h-4 text-red-600" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">标签</label>
+                        <input
+                          type="text"
+                          value={param.label}
+                          onChange={(e) => handleParameterChange(param.id, 'label', e.target.value)}
+                          className="w-full px-2 h-8 border border-gray-300 rounded text-xs"
+                          placeholder="游戏类型"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">参数名</label>
+                        <input
+                          type="text"
+                          value={param.name}
+                          onChange={(e) => handleParameterChange(param.id, 'name', e.target.value)}
+                          className="w-full px-2 h-8 border border-gray-300 rounded text-xs font-mono"
+                          placeholder="gameType"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">类型</label>
+                        <select
+                          value={param.type}
+                          onChange={(e) => handleParameterChange(param.id, 'type', e.target.value)}
+                          className="w-full px-2 h-8 border border-gray-300 rounded text-xs"
+                        >
+                          <option value="text">文本</option>
+                          <option value="select">选择</option>
+                          <option value="color">颜色</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-1 h-full pt-5">
+                          <input
+                            type="checkbox"
+                            checked={param.required || false}
+                            onChange={(e) => handleParameterChange(param.id, 'required', e.target.checked)}
+                            className="w-3 h-3"
+                          />
+                          <span className="text-xs text-gray-600">必填</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {param.type === 'text' && (
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">占位符</label>
+                        <input
+                          type="text"
+                          value={param.placeholder || ''}
+                          onChange={(e) => handleParameterChange(param.id, 'placeholder', e.target.value)}
+                          className="w-full px-2 h-8 border border-gray-300 rounded text-xs"
+                          placeholder="请输入..."
+                        />
+                      </div>
+                    )}
+
+                    {param.type === 'select' && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs text-gray-600">选项</label>
+                          <button
+                            type="button"
+                            onClick={() => handleAddOption(param.id)}
+                            className="text-xs text-cyan-600 hover:text-cyan-700"
+                          >
+                            + 添加选项
+                          </button>
+                        </div>
+                        <div className="space-y-1">
+                          {(param.options || []).map((option, optIndex) => (
+                            <div key={optIndex} className="flex gap-1">
+                              <input
+                                type="text"
+                                value={option}
+                                onChange={(e) => handleOptionChange(param.id, optIndex, e.target.value)}
+                                className="flex-1 px-2 h-7 border border-gray-300 rounded text-xs"
+                                placeholder={`选项 ${optIndex + 1}`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveOption(param.id, optIndex)}
+                                disabled={(param.options || []).length <= 1}
+                                className="p-1 hover:bg-red-50 rounded transition-colors disabled:opacity-40"
+                              >
+                                <Minus className="w-3 h-3 text-red-600" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">AI 模型</label>
+              <select
+                value={formData.model || 'doubao-seed-code-preview-251028'}
+                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                className="w-full px-3 h-9 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-gray-900 text-sm"
+              >
+                <option value="doubao-seed-code-preview-251028">豆包代码预览</option>
+                <option value="deepseek-v3-1-250821">DeepSeek V3.1</option>
+                <option value="kimi-k2-thinking-251104">Kimi K2 深度思考</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">按钮文本</label>
+              <input
+                type="text"
+                value={formData.buttonText || ''}
+                onChange={(e) => setFormData({ ...formData, buttonText: e.target.value })}
+                className="w-full px-3 h-9 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-gray-900 text-sm"
+                placeholder="生成 HTML 游戏"
+              />
+            </div>
+
+            <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-2.5">
+              <p className="text-xs text-cyan-800">
+                💡 学生填写参数后，AI 将根据提示词模板生成完整的 HTML 代码并自动渲染
+              </p>
+            </div>
+          </div>
+        );
+      }
+
       default:
         return null;
     }

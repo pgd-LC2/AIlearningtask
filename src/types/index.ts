@@ -12,6 +12,7 @@ export type ComponentType =
   | 'image'
   | 'video'
   | 'ai-chatbox'
+  | 'ai-html-generator'
   | 'page-break'
   | 'hyperlink';
 
@@ -154,6 +155,28 @@ export interface HyperlinkComponent extends BaseComponent {
   };
 }
 
+export interface ParameterField {
+  id: string;
+  label: string;
+  name: string;
+  type: 'text' | 'select' | 'color';
+  placeholder?: string;
+  options?: string[];
+  required?: boolean;
+}
+
+export interface AIHtmlGeneratorComponent extends BaseComponent {
+  type: 'ai-html-generator';
+  config: {
+    title?: string;
+    description?: string;
+    promptTemplate: string;
+    parameters: ParameterField[];
+    model?: string;
+    buttonText?: string;
+  };
+}
+
 export type LessonComponent =
   | TitleComponent
   | ParagraphComponent
@@ -168,6 +191,7 @@ export type LessonComponent =
   | ImageComponent
   | VideoComponent
   | AIChatboxComponent
+  | AIHtmlGeneratorComponent
   | PageBreakComponent
   | HyperlinkComponent;
 

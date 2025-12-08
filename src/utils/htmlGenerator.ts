@@ -335,6 +335,61 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
             '</button>' +
           '</div>' +
         '</div>';
+      case 'ai-html-generator':
+        const genId = 'gen_' + comp.id;
+        const parametersHtml = (comp.config.parameters || []).map(param => {
+          let inputHtml = '';
+          if (param.type === 'text') {
+            inputHtml = '<input type="text" id="param_' + comp.id + '_' + param.name + '" ' +
+              'class="generator-input" ' +
+              (param.placeholder ? 'placeholder="' + escapeHtml(param.placeholder) + '" ' : '') +
+              (param.required ? 'required ' : '') + '/>';
+          } else if (param.type === 'select') {
+            inputHtml = '<select id="param_' + comp.id + '_' + param.name + '" class="generator-input" ' +
+              (param.required ? 'required' : '') + '>' +
+              '<option value="">请选择...</option>' +
+              (param.options || []).map(opt => '<option value="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</option>').join('') +
+              '</select>';
+          } else if (param.type === 'color') {
+            inputHtml = '<input type="color" id="param_' + comp.id + '_' + param.name + '" ' +
+              'class="generator-input-color" value="#3b82f6" />';
+          }
+          return '<div class="generator-param">' +
+            '<label class="generator-label">' +
+              escapeHtml(param.label) +
+              (param.required ? '<span style="color: #ef4444; margin-left: 4px;">*</span>' : '') +
+            '</label>' +
+            inputHtml +
+          '</div>';
+        }).join('');
+
+        return '<div class="component ai-generator-component" id="' + genId + '">' +
+          (comp.config.title ? '<h3 class="generator-title">' + escapeHtml(comp.config.title) + '</h3>' : '') +
+          (comp.config.description ? '<p class="generator-description">' + escapeHtml(comp.config.description) + '</p>' : '') +
+          '<div class="generator-form">' +
+            parametersHtml +
+            '<button onclick="window.generateHTML(\'' + comp.id + '\')" id="genBtn_' + comp.id + '" ' +
+              'class="generator-btn">' +
+              escapeHtml(comp.config.buttonText || '生成 HTML 游戏') +
+            '</button>' +
+          '</div>' +
+          '<div id="output_' + comp.id + '" class="generator-output" style="display: none;"></div>' +
+          '<div id="render_' + comp.id + '" class="generator-render" style="display: none;">' +
+            '<div class="generator-render-header">' +
+              '<span>渲染结果</span>' +
+              '<button onclick="window.clearGeneratedHTML(\'' + comp.id + '\')" class="generator-clear-btn">清除</button>' +
+            '</div>' +
+            '<iframe id="iframe_' + comp.id + '" class="generator-iframe" sandbox="allow-scripts allow-same-origin"></iframe>' +
+          '</div>' +
+          '<script>' +
+            'window.generatorConfig = window.generatorConfig || {};' +
+            'window.generatorConfig[\'' + comp.id + '\'] = {' +
+              'promptTemplate: ' + JSON.stringify(comp.config.promptTemplate || '') + ',' +
+              'model: ' + JSON.stringify(comp.config.model || 'doubao-seed-code-preview-251028') + ',' +
+              'parameters: ' + JSON.stringify((comp.config.parameters || []).map(p => ({ name: p.name, required: p.required }))) +
+            '};' +
+          '</script>' +
+        '</div>';
       default:
         return '';
     }
@@ -538,6 +593,25 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
     .chatbox-send-btn { width: 40px; height: 40px; border-radius: 999px; background: linear-gradient(135deg, #06b6d4 0%, #14b8a6 100%); color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
     .chatbox-send-btn:hover { opacity: 0.9; transform: scale(1.05); }
     .chatbox-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .ai-generator-component { border: 2px solid #06b6d4; border-radius: 16px; padding: 24px; background: white; }
+    .generator-title { font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 8px; }
+    .generator-description { font-size: 14px; color: #6b7280; margin-bottom: 20px; }
+    .generator-form { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .generator-param { margin-bottom: 16px; }
+    .generator-param:last-of-type { margin-bottom: 20px; }
+    .generator-label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    .generator-input { width: 100%; padding: 10px 14px; border: 2px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; transition: all 0.2s; background: white; }
+    .generator-input:focus { outline: none; border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1); }
+    .generator-input-color { width: 100%; height: 40px; padding: 4px; border: 2px solid #d1d5db; border-radius: 8px; cursor: pointer; }
+    .generator-btn { width: 100%; height: 48px; background: linear-gradient(135deg, #06b6d4 0%, #14b8a6 100%); color: white; border: none; border-radius: 999px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .generator-btn:hover { opacity: 0.9; transform: scale(1.02); }
+    .generator-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .generator-output { margin-top: 16px; padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; }
+    .generator-render { margin-top: 16px; border: 2px solid #06b6d4; border-radius: 12px; overflow: hidden; }
+    .generator-render-header { background: linear-gradient(135deg, #06b6d4 0%, #14b8a6 100%); color: white; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
+    .generator-clear-btn { padding: 6px 12px; background: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+    .generator-clear-btn:hover { background: rgba(255, 255, 255, 0.3); }
+    .generator-iframe { width: 100%; min-height: 400px; height: 600px; border: none; display: block; }
     @media (max-width: 640px) {
       .form-grid { grid-template-columns: 1fr; }
       .pagination { gap: 12px; }
@@ -1526,6 +1600,137 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
         window.sendChatMessage(chatboxId);
       }
     });
+
+    window.generateHTML = async function(componentId) {
+      const config = window.generatorConfig[componentId];
+      if (!config) return;
+
+      const paramValues = {};
+      let hasError = false;
+
+      config.parameters.forEach(param => {
+        const input = document.getElementById('param_' + componentId + '_' + param.name);
+        const value = input ? input.value.trim() : '';
+
+        if (param.required && !value) {
+          alert('请填写必填项：' + param.name);
+          hasError = true;
+          return;
+        }
+
+        paramValues[param.name] = value;
+      });
+
+      if (hasError) return;
+
+      let promptText = config.promptTemplate;
+      Object.keys(paramValues).forEach(key => {
+        const regex = new RegExp('\\\\{\\\\{' + key + '\\\\}\\\\}', 'g');
+        promptText = promptText.replace(regex, paramValues[key]);
+      });
+
+      const genBtn = document.getElementById('genBtn_' + componentId);
+      const outputDiv = document.getElementById('output_' + componentId);
+      const renderDiv = document.getElementById('render_' + componentId);
+
+      genBtn.disabled = true;
+      genBtn.textContent = '正在生成...';
+      outputDiv.style.display = 'block';
+      outputDiv.innerHTML = '<p style="color: #06b6d4; font-weight: 600;">AI 正在生成中...</p>';
+
+      try {
+        const response = await fetch(SUPABASE_URL + '/functions/v1/volcengine-ai', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: config.model,
+            messages: [{ role: 'user', content: promptText }],
+            stream: true
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('生成失败');
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullOutput = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') {
+                break;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.content) {
+                  const text = parsed.choices[0].delta.content;
+                  fullOutput += text;
+                  outputDiv.innerHTML = '<pre style="font-size: 12px; white-space: pre-wrap; font-family: monospace;">' + fullOutput + '</pre>';
+
+                  const htmlMatch = fullOutput.match(/\`\`\`html\\n([\\s\\S]*?)\\n\`\`\`/);
+                  if (htmlMatch) {
+                    const html = htmlMatch[1];
+                    const iframe = document.getElementById('iframe_' + componentId);
+                    const doc = iframe.contentDocument || iframe.contentWindow.document;
+                    doc.open();
+                    const isFullDoc = /<!DOCTYPE|<html/i.test(html);
+                    if (isFullDoc) {
+                      doc.write(html);
+                    } else {
+                      doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; }</style></head><body>' + html + '</body></html>');
+                    }
+                    doc.close();
+                    renderDiv.style.display = 'block';
+                  }
+                }
+              } catch (e) {
+                console.warn('解析失败:', e);
+              }
+            }
+          }
+        }
+
+        genBtn.disabled = false;
+        genBtn.textContent = config.buttonText || '生成 HTML 游戏';
+        outputDiv.innerHTML = '<p style="color: #10b981; font-weight: 600;">✓ 生成完成</p>';
+      } catch (error) {
+        console.error('生成错误:', error);
+        genBtn.disabled = false;
+        genBtn.textContent = config.buttonText || '生成 HTML 游戏';
+        outputDiv.innerHTML = '<p style="color: #ef4444; font-weight: 600;">✗ 生成失败，请重试</p>';
+      }
+    };
+
+    window.clearGeneratedHTML = function(componentId) {
+      const renderDiv = document.getElementById('render_' + componentId);
+      const outputDiv = document.getElementById('output_' + componentId);
+      const iframe = document.getElementById('iframe_' + componentId);
+
+      renderDiv.style.display = 'none';
+      outputDiv.style.display = 'none';
+      outputDiv.innerHTML = '';
+
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open();
+      doc.write('');
+      doc.close();
+    };
 
     window.submitAnswers = async function() {
       const studentClass = document.getElementById('studentClass').value.trim();
