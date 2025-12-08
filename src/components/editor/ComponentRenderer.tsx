@@ -757,30 +757,26 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
       const renderHtmlInIframe = (html: string) => {
         if (htmlIframeRef.current && html) {
           const iframe = htmlIframeRef.current;
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (doc) {
-            doc.open();
-            const isFullDoc = /<!DOCTYPE|<html/i.test(html);
-            if (isFullDoc) {
-              doc.write(html);
-            } else {
-              doc.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                  <meta charset="UTF-8">
-                  <style>
-                    body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; overflow: auto; }
-                  </style>
-                </head>
-                <body>
-                  ${html}
-                </body>
-                </html>
-              `);
-            }
-            doc.close();
+          const isFullDoc = /<!DOCTYPE|<html/i.test(html);
+          let finalHtml = html;
+
+          if (!isFullDoc) {
+            finalHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; overflow: auto; }
+  </style>
+</head>
+<body>
+  ${html}
+</body>
+</html>`;
           }
+
+          iframe.srcdoc = finalHtml;
         }
       };
 
@@ -961,7 +957,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
                   ref={htmlIframeRef}
                   className="w-full border-0"
                   style={{ minHeight: '400px', height: '600px' }}
-                  sandbox="allow-scripts allow-same-origin"
+                  sandbox="allow-scripts"
                   title="Generated HTML"
                 />
               </div>

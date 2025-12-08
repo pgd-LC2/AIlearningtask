@@ -144,7 +144,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           '</button>' +
           '</div>' +
           '<div id="' + containerScrollId + '" style="max-height: ' + customHeight + 'px; width: ' + customWidth + '; overflow: auto; border: 1px solid #e5e7eb; border-radius: 8px; background: white;">' +
-          '<iframe id="' + embedId + '" class="embed-iframe" sandbox="allow-scripts allow-same-origin" style="width: 100%; border: none; min-height: 200px;"></iframe>' +
+          '<iframe id="' + embedId + '" class="embed-iframe" sandbox="allow-scripts" style="width: 100%; border: none; min-height: 200px;"></iframe>' +
           '</div>' +
           '<div id="' + fullscreenModalId + '" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.95); flex-direction: column;">' +
           '<div style="display: flex; align-items: center; justify-content: space-between; padding: 16px; background: #111827;">' +
@@ -158,7 +158,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           '<button id="btn_close_' + comp.id + '" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>关闭</button>' +
           '</div>' +
-          '<div style="flex: 1; overflow: auto;"><iframe id="' + embedId + '_fs" sandbox="allow-scripts allow-same-origin" style="width: 100%; height: 100%; border: none;"></iframe></div>' +
+          '<div style="flex: 1; overflow: auto;"><iframe id="' + embedId + '_fs" sandbox="allow-scripts" style="width: 100%; height: 100%; border: none;"></iframe></div>' +
           '</div>' +
           '<script>' +
           '(function() {' +
@@ -379,7 +379,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
               '<span>渲染结果</span>' +
               '<button onclick="window.clearGeneratedHTML(\'' + comp.id + '\')" class="generator-clear-btn">清除</button>' +
             '</div>' +
-            '<iframe id="iframe_' + comp.id + '" class="generator-iframe" sandbox="allow-scripts allow-same-origin"></iframe>' +
+            '<iframe id="iframe_' + comp.id + '" class="generator-iframe" sandbox="allow-scripts"></iframe>' +
           '</div>' +
           '<script>' +
             'window.generatorConfig = window.generatorConfig || {};' +
@@ -1687,15 +1687,12 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
                   if (htmlMatch) {
                     const html = htmlMatch[1];
                     const iframe = document.getElementById('iframe_' + componentId);
-                    const doc = iframe.contentDocument || iframe.contentWindow.document;
-                    doc.open();
                     const isFullDoc = /<!DOCTYPE|<html/i.test(html);
-                    if (isFullDoc) {
-                      doc.write(html);
-                    } else {
-                      doc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; }</style></head><body>' + html + '</body></html>');
+                    let finalHtml = html;
+                    if (!isFullDoc) {
+                      finalHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; }</style></head><body>' + html + '</body></html>';
                     }
-                    doc.close();
+                    iframe.srcdoc = finalHtml;
                     renderDiv.style.display = 'block';
                   }
                 }
@@ -1726,10 +1723,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
       outputDiv.style.display = 'none';
       outputDiv.innerHTML = '';
 
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
-      doc.open();
-      doc.write('');
-      doc.close();
+      iframe.srcdoc = '';
     };
 
     window.submitAnswers = async function() {
