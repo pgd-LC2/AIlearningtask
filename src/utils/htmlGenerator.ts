@@ -362,8 +362,69 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked@11/marked.min.js"></script>
+  <script>
+    // 多CDN备用加载方案
+    (function() {
+      const cdnSources = {
+        supabase: [
+          'https://unpkg.com/@supabase/supabase-js@2',
+          'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+          'https://cdn.skypack.dev/@supabase/supabase-js@2'
+        ],
+        marked: [
+          'https://unpkg.com/marked@11/marked.min.js',
+          'https://cdn.jsdelivr.net/npm/marked@11/marked.min.js',
+          'https://cdn.skypack.dev/marked@11'
+        ]
+      };
+
+      function loadScriptWithFallback(name, urls, index = 0) {
+        return new Promise((resolve, reject) => {
+          if (index >= urls.length) {
+            reject(new Error(\`所有CDN加载失败: \${name}\`));
+            return;
+          }
+
+          const script = document.createElement('script');
+          script.src = urls[index];
+          script.timeout = 10000;
+
+          const timer = setTimeout(() => {
+            script.remove();
+            console.warn(\`CDN超时，尝试下一个: \${urls[index]}\`);
+            loadScriptWithFallback(name, urls, index + 1).then(resolve).catch(reject);
+          }, 10000);
+
+          script.onload = () => {
+            clearTimeout(timer);
+            console.log(\`成功加载 \${name} from \${urls[index]}\`);
+            resolve();
+          };
+
+          script.onerror = () => {
+            clearTimeout(timer);
+            script.remove();
+            console.warn(\`CDN失败，尝试下一个: \${urls[index]}\`);
+            loadScriptWithFallback(name, urls, index + 1).then(resolve).catch(reject);
+          };
+
+          document.head.appendChild(script);
+        });
+      }
+
+      window.initializeLibraries = async function() {
+        try {
+          await loadScriptWithFallback('Supabase', cdnSources.supabase);
+          await loadScriptWithFallback('Marked', cdnSources.marked);
+          return true;
+        } catch (error) {
+          console.error('库加载失败:', error);
+          alert('网络资源加载失败，请检查网络连接后刷新页面。\\n\\n如果问题持续，请联系老师。');
+          return false;
+        }
+      };
+    })();
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #dbeafe 0%, #f3e8ff 50%, #fce7f3 100%); padding: 32px 16px; line-height: 1.6; min-height: 100vh; }
@@ -538,7 +599,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           <input type="text" id="studentName" required placeholder="输入姓名">
         </div>
       </div>
-      <button class="submit-btn" onclick="submitAnswers()">提交答案</button>
+      <button class="submit-btn" onclick="window.submitAnswers()">提交答案</button>
       <div id="message" style="margin-top: 16px;"></div>
     </div>
   </div>
@@ -552,19 +613,36 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
     const STORAGE_KEY = 'student_answers_' + TASK_ID;
     const CHAT_STORAGE_KEY = 'chat_history_' + TASK_ID;
 
-    console.log('Supabase配置:', {
-      url: SUPABASE_URL,
-      taskId: TASK_ID,
-      hasAnonKey: !!SUPABASE_ANON_KEY,
-      anonKeyLength: SUPABASE_ANON_KEY?.length
-    });
+    let supabaseClient;
 
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false
+    async function initializeApp() {
+      console.log('开始初始化应用...');
+
+      const loadSuccess = await window.initializeLibraries();
+      if (!loadSuccess) {
+        document.body.innerHTML = '<div style="text-align:center;padding:40px;"><h2 style="color:#ef4444;">加载失败</h2><p>网络资源加载失败，请检查网络连接后刷新页面。</p></div>';
+        return;
       }
-    });
+
+      console.log('Supabase配置:', {
+        url: SUPABASE_URL,
+        taskId: TASK_ID,
+        hasAnonKey: !!SUPABASE_ANON_KEY,
+        anonKeyLength: SUPABASE_ANON_KEY?.length
+      });
+
+      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false
+        }
+      });
+
+      console.log('应用初始化完成');
+      initializeContent();
+    }
+
+    function initializeContent() {
 
     window.luckyBoxData = window.luckyBoxData || {};
     let currentPage = 0;
@@ -1449,7 +1527,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
       }
     });
 
-    async function submitAnswers() {
+    window.submitAnswers = async function() {
       const studentClass = document.getElementById('studentClass').value.trim();
       const studentName = document.getElementById('studentName').value.trim();
       const messageDiv = document.getElementById('message');
@@ -1822,6 +1900,13 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
       });
     } else {
       finishInitialization();
+    }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeApp);
+    } else {
+      initializeApp();
     }
   </script>
 </body>
