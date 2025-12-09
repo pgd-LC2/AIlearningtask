@@ -593,23 +593,28 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
     .chatbox-send-btn { width: 40px; height: 40px; border-radius: 999px; background: linear-gradient(135deg, #06b6d4 0%, #14b8a6 100%); color: white; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
     .chatbox-send-btn:hover { opacity: 0.9; transform: scale(1.05); }
     .chatbox-send-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-    .ai-generator-component { border: 2px solid #06b6d4; border-radius: 16px; padding: 24px; background: white; }
+    .ai-generator-component { border: 2px solid #06b6d4; border-radius: 20px; padding: 24px; background: linear-gradient(135deg, #f0fdfa 0%, #ecfeff 100%); }
     .generator-title { font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 8px; }
     .generator-description { font-size: 14px; color: #6b7280; margin-bottom: 20px; }
-    .generator-form { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+    .generator-form { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .generator-param { margin-bottom: 16px; }
     .generator-param:last-of-type { margin-bottom: 20px; }
-    .generator-label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-    .generator-input { width: 100%; padding: 10px 14px; border: 2px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; transition: all 0.2s; background: white; }
-    .generator-input:focus { outline: none; border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1); }
-    .generator-input-color { width: 100%; height: 40px; padding: 4px; border: 2px solid #d1d5db; border-radius: 8px; cursor: pointer; }
-    .generator-btn { width: 100%; height: 48px; background: linear-gradient(135deg, #06b6d4 0%, #14b8a6 100%); color: white; border: none; border-radius: 999px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .generator-btn:hover { opacity: 0.9; transform: scale(1.02); }
-    .generator-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-    .generator-output { margin-top: 16px; padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; }
-    .generator-render { margin-top: 16px; border: 2px solid #06b6d4; border-radius: 12px; overflow: hidden; }
-    .generator-render-header { background: linear-gradient(135deg, #06b6d4 0%, #14b8a6 100%); color: white; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
-    .generator-clear-btn { padding: 6px 12px; background: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+    .generator-label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+    .generator-input { width: 100%; height: 44px; padding: 0 16px; border: 2px solid #e5e7eb; border-radius: 999px; font-size: 14px; font-family: inherit; transition: all 0.2s; background: #f9fafb; box-sizing: border-box; }
+    .generator-input:focus { outline: none; border-color: #06b6d4; background: white; box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1); }
+    .generator-input:hover { border-color: #d1d5db; }
+    select.generator-input { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 44px; }
+    .generator-input-color { width: 100%; height: 44px; padding: 6px; border: 2px solid #e5e7eb; border-radius: 999px; cursor: pointer; background: #f9fafb; transition: all 0.2s; }
+    .generator-input-color:hover { border-color: #d1d5db; }
+    .generator-input-color:focus { outline: none; border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1); }
+    .generator-btn { width: 100%; height: 48px; background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white; border: none; border-radius: 999px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35); }
+    .generator-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4); }
+    .generator-btn:active { transform: translateY(0); }
+    .generator-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .generator-output { margin-top: 16px; padding: 16px; background: white; border: 1px solid #e5e7eb; border-radius: 16px; }
+    .generator-render { margin-top: 16px; border: 2px solid #06b6d4; border-radius: 16px; overflow: hidden; background: white; }
+    .generator-render-header { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); color: white; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; font-weight: 600; }
+    .generator-clear-btn { padding: 8px 16px; background: rgba(255, 255, 255, 0.2); color: white; border: none; border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
     .generator-clear-btn:hover { background: rgba(255, 255, 255, 0.3); }
     .generator-iframe { width: 100%; min-height: 400px; height: 600px; border: none; display: block; }
     @media (max-width: 640px) {
@@ -1648,6 +1653,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           body: JSON.stringify({
             model: config.model,
             messages: [{ role: 'user', content: promptText }],
+            max_tokens: 100000,
             stream: true
           })
         });
