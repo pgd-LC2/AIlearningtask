@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
       model: requestData.model || "kimi-k2-thinking-251104",
       messages: requestData.messages,
       temperature: requestData.temperature ?? 0.7,
-      max_tokens: requestData.max_tokens ?? 80000,
+      max_tokens: requestData.max_tokens ?? 16000,
       stream: requestData.stream ?? true,
     };
 

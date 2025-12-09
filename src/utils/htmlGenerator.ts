@@ -1653,7 +1653,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           body: JSON.stringify({
             model: config.model,
             messages: [{ role: 'user', content: promptText }],
-            max_tokens: 100000,
+            max_tokens: 32000,
             stream: true
           })
         });
