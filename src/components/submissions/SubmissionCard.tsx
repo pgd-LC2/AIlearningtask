@@ -102,7 +102,7 @@ export default function SubmissionCard({ submission, components }: SubmissionCar
       {expanded && (
         <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
           {components
-            .filter(component => ['single-choice', 'multiple-choice', 'fill-blank', 'question-answer'].includes(component.type))
+            .filter(component => ['single-choice', 'multiple-choice', 'fill-blank', 'question-answer', 'code-editor'].includes(component.type))
             .map((component, index) => {
               const answer = submission.answers[component.id];
               const questionText = getQuestionText(component);
@@ -115,7 +115,8 @@ export default function SubmissionCard({ submission, components }: SubmissionCar
                 'single-choice': 'info',
                 'multiple-choice': 'purple',
                 'fill-blank': 'warning',
-                'question-answer': 'success'
+                'question-answer': 'success',
+                'code-editor': 'success'
               };
 
               const hasCorrectAnswer = (() => {
@@ -185,7 +186,13 @@ export default function SubmissionCard({ submission, components }: SubmissionCar
                   <div className={`space-y-2 ${hasCorrectAnswer ? 'pl-8' : ''}`}>
                     <div className="bg-white rounded-lg p-3 border border-gray-200">
                       <p className="text-xs font-semibold text-gray-600 mb-1">学生答案</p>
-                      <p className="text-sm text-gray-900">{formattedAnswer}</p>
+                      {component.type === 'code-editor' ? (
+                        <pre className="text-sm text-gray-900 font-mono bg-gray-50 p-3 rounded border border-gray-200 overflow-x-auto whitespace-pre-wrap break-words">
+                          {formattedAnswer}
+                        </pre>
+                      ) : (
+                        <p className="text-sm text-gray-900">{formattedAnswer}</p>
+                      )}
                     </div>
 
                     {hasCorrectAnswer && (

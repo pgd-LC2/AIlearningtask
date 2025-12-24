@@ -58,6 +58,14 @@ export function compareAnswers(
         detail: '主观题需人工批改'
       };
 
+    case 'code-editor':
+      return {
+        isCorrect: false,
+        studentAnswer,
+        correctAnswer: null,
+        detail: '代码需人工审阅'
+      };
+
     default:
       return { isCorrect: false, studentAnswer, correctAnswer };
   }
@@ -73,6 +81,8 @@ function getCorrectAnswer(component: LessonComponent): any {
       return component.config.correctAnswers ?? null;
     case 'question-answer':
       return component.config.referenceAnswer ?? null;
+    case 'code-editor':
+      return null;
     default:
       return null;
   }

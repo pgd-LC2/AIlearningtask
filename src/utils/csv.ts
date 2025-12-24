@@ -16,7 +16,11 @@ export function generateCSV(
 ): void {
   if (submissions.length === 0) return;
 
-  const questionHeaders = components.map((comp, index) => {
+  const questionComponents = components.filter(comp =>
+    ['single-choice', 'multiple-choice', 'fill-blank', 'question-answer', 'code-editor'].includes(comp.type)
+  );
+
+  const questionHeaders = questionComponents.map((comp, index) => {
     const type = QUESTION_TYPE_LABELS[comp.type] || comp.type;
     let question = getQuestionText(comp);
     question = cleanQuestionText(question);
@@ -27,7 +31,7 @@ export function generateCSV(
   const headers = ['班级', '姓名', '提交时间', ...questionHeaders];
 
   const rows = submissions.map(sub => {
-    const answers = components.map(comp => {
+    const answers = questionComponents.map(comp => {
       const answer = sub.answers[comp.id];
       return formatAnswer(comp, answer);
     });
