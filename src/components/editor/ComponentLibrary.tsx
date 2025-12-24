@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   Heading, Type, Columns, List, CheckSquare,
   TextCursorInput, MessageSquare, Gift, Code, ChevronDown, ChevronRight,
-  Image, Video, Minus, MessageCircle, Link, Wand2
+  Image, Video, Minus, MessageCircle, Link, Wand2, FileCode
 } from 'lucide-react';
 import { LessonComponent } from '../../types';
 
@@ -99,6 +99,20 @@ export default function ComponentLibrary({ onAddComponent }: ComponentLibraryPro
             buttonText: '生成 HTML 游戏'
           }
         };
+      case 'code-editor':
+        return {
+          id,
+          type,
+          config: {
+            sections: [
+              { id: 'section-1', title: '题目', color: '#3b82f6' },
+              { id: 'section-2', title: '要求', color: '#10b981' }
+            ],
+            language: 'python',
+            initialCode: '# 在这里编写你的代码\n',
+            placeholder: '请在此输入 Python 代码...'
+          }
+        };
       default:
         return { id, type, config: {} };
     }
@@ -141,6 +155,7 @@ export default function ComponentLibrary({ onAddComponent }: ComponentLibraryPro
         { type: 'multiple-choice', icon: CheckSquare, label: '多选题' },
         { type: 'fill-blank', icon: TextCursorInput, label: '填空题' },
         { type: 'question-answer', icon: MessageSquare, label: '问答题' },
+        { type: 'code-editor', icon: FileCode, label: '代码编辑器' },
       ],
     },
     {

@@ -860,6 +860,119 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
           </div>
         );
 
+      case 'code-editor': {
+        const sections = formData.sections || [{ id: 'section-1', title: '', color: '#3b82f6' }];
+
+        const handleAddSection = () => {
+          setFormData({
+            ...formData,
+            sections: [...sections, { id: `section-${Date.now()}`, title: '', color: '#10b981' }]
+          });
+        };
+
+        const handleRemoveSection = (id: string) => {
+          if (sections.length > 1) {
+            setFormData({
+              ...formData,
+              sections: sections.filter(s => s.id !== id)
+            });
+          }
+        };
+
+        const handleSectionChange = (id: string, field: string, value: string) => {
+          setFormData({
+            ...formData,
+            sections: sections.map(s => s.id === id ? { ...s, [field]: value } : s)
+          });
+        };
+
+        return (
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-medium text-gray-700">便利贴部分</label>
+                <button
+                  type="button"
+                  onClick={handleAddSection}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  添加部分
+                </button>
+              </div>
+              <div className="space-y-2">
+                {sections.map((section, index) => (
+                  <div key={section.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                    <input
+                      type="color"
+                      value={section.color}
+                      onChange={(e) => handleSectionChange(section.id, 'color', e.target.value)}
+                      className="w-10 h-9 rounded cursor-pointer"
+                      title="选择颜色"
+                    />
+                    <input
+                      type="text"
+                      value={section.title}
+                      onChange={(e) => handleSectionChange(section.id, 'title', e.target.value)}
+                      className="flex-1 px-3 h-9 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                      placeholder={`部分 ${index + 1} 标题`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSection(section.id)}
+                      disabled={sections.length <= 1}
+                      className="p-1.5 hover:bg-red-50 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="删除部分"
+                    >
+                      <Minus className="w-4 h-4 text-red-600" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">编程语言</label>
+              <select
+                value={formData.language || 'python'}
+                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                className="w-full px-3 h-9 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              >
+                <option value="python">Python</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">初始代码（可选）</label>
+              <textarea
+                value={formData.initialCode || ''}
+                onChange={(e) => setFormData({ ...formData, initialCode: e.target.value })}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 resize-none font-mono text-sm"
+                placeholder="# 在这里编写你的代码"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">输入框占位符</label>
+              <input
+                type="text"
+                value={formData.placeholder || ''}
+                onChange={(e) => setFormData({ ...formData, placeholder: e.target.value })}
+                className="w-full px-3 h-9 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                placeholder="请在此输入 Python 代码..."
+              />
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2.5">
+              <p className="text-xs text-green-800">
+                💡 学生提交的代码会自动保存，老师可以在提交页面查看
+              </p>
+            </div>
+          </div>
+        );
+      }
+
       case 'ai-html-generator': {
         const handleAddParameter = () => {
           const newParam = {

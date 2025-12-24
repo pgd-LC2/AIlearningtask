@@ -2,7 +2,7 @@ import { LessonComponent } from '../types';
 
 export function generateStudentHTML(title: string, components: LessonComponent[], taskId: string, supabaseUrl: string, supabaseAnonKey: string): string {
   const questionComponents = components.filter(comp =>
-    ['single-choice', 'multiple-choice', 'fill-blank', 'question-answer'].includes(comp.type)
+    ['single-choice', 'multiple-choice', 'fill-blank', 'question-answer', 'code-editor'].includes(comp.type)
   );
 
   const answerCollectionCode = questionComponents.map(comp => {
@@ -24,6 +24,9 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
     } else if (comp.type === 'question-answer') {
       return `const textarea_${safeId} = document.getElementById('q_${comp.id}');
       if (textarea_${safeId}) answers['${comp.id}'] = textarea_${safeId}.value;`;
+    } else if (comp.type === 'code-editor') {
+      return `const codeEditor_${safeId} = document.getElementById('code_${comp.id}');
+      if (codeEditor_${safeId}) answers['${comp.id}'] = codeEditor_${safeId}.value;`;
     }
     return '';
   }).join('\n      ');
@@ -389,6 +392,33 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
               'parameters: ' + JSON.stringify((comp.config.parameters || []).map(p => ({ name: p.name, required: p.required }))) +
             '};' +
           '</script>' +
+        '</div>';
+      case 'code-editor':
+        questionIndex++;
+        const sectionsHTML = (comp.config.sections || []).map((section: any) =>
+          '<div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;">' +
+            '<div style="width: 4px; min-height: 32px; border-radius: 4px; background-color: ' + (section.color || '#3b82f6') + ';"></div>' +
+            '<div style="flex: 1;">' +
+              '<h4 style="margin: 0; font-weight: 600; color: #111827;">' + escapeHtml(section.title || '') + '</h4>' +
+            '</div>' +
+          '</div>'
+        ).join('');
+
+        return '<div class="component">' +
+          '<div class="question">' + questionIndex + '. [代码编辑] </div>' +
+          sectionsHTML +
+          '<div style="border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; background: #f9fafb; margin-top: 12px;">' +
+            '<div style="background: #1f2937; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;">' +
+              '<span style="color: #9ca3af; font-family: monospace; font-size: 12px;">' + escapeHtml(comp.config.language || 'python') + '</span>' +
+            '</div>' +
+            '<textarea id="code_' + comp.id + '" ' +
+              'style="width: 100%; padding: 16px; background: white; font-family: \'Courier New\', monospace; font-size: 14px; ' +
+              'resize: vertical; border: none; outline: none; min-height: 240px; box-sizing: border-box;" ' +
+              'placeholder="' + escapeHtml(comp.config.placeholder || '请在此输入代码...') + '" ' +
+              'onkeydown="if(event.key===\'Tab\'){event.preventDefault();const s=this.selectionStart;const e=this.selectionEnd;this.value=this.value.substring(0,s)+\'    \'+this.value.substring(e);this.selectionStart=this.selectionEnd=s+4;}">' +
+              escapeHtml(comp.config.initialCode || '') +
+            '</textarea>' +
+          '</div>' +
         '</div>';
       default:
         return '';
