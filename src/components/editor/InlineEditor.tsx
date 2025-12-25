@@ -3,6 +3,7 @@ import { LessonComponent } from '../../types';
 import { uploadImage, pasteImageFromClipboard } from '../../utils/imageUpload';
 import { Upload, Loader2, Plus, Minus } from 'lucide-react';
 import { VideoHelpBanner, VideoHelpIcon, VideoHelpModal } from './VideoHelpTip';
+import RichTextEditor from './RichTextEditor';
 
 interface InlineEditorProps {
   component: LessonComponent;
@@ -140,15 +141,10 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
       case 'paragraph':
         return (
           <div className="space-y-3">
-            <textarea
-              ref={textInputRef as React.RefObject<HTMLTextAreaElement>}
+            <RichTextEditor
               value={formData.text || ''}
-              onChange={(e) => setFormData({ ...formData, text: e.target.value })}
-              onKeyDown={handleKeyDown}
-              autoFocus
-              rows={6}
-              className="w-full px-3 py-2 border-2 border-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none text-gray-900"
-              placeholder="输入段落内容"
+              onChange={(value) => setFormData({ ...formData, text: value })}
+              placeholder="输入段落内容..."
             />
             <select
               value={formData.size}
@@ -900,32 +896,34 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
                   添加部分
                 </button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {sections.map((section, index) => (
-                  <div key={section.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                    <input
-                      type="color"
-                      value={section.color}
-                      onChange={(e) => handleSectionChange(section.id, 'color', e.target.value)}
-                      className="w-10 h-9 rounded cursor-pointer"
-                      title="选择颜色"
+                  <div key={section.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={section.color}
+                        onChange={(e) => handleSectionChange(section.id, 'color', e.target.value)}
+                        className="w-10 h-9 rounded cursor-pointer"
+                        title="选择颜色"
+                      />
+                      <span className="text-xs font-medium text-gray-600 flex-1">便利贴 {index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSection(section.id)}
+                        disabled={sections.length <= 1}
+                        className="p-1.5 hover:bg-red-50 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="删除部分"
+                      >
+                        <Minus className="w-4 h-4 text-red-600" />
+                      </button>
+                    </div>
+                    <RichTextEditor
+                      value={section.title || ''}
+                      onChange={(value) => handleSectionChange(section.id, 'title', value)}
+                      placeholder={`输入便利贴 ${index + 1} 内容...`}
+                      minHeight="80px"
                     />
-                    <input
-                      type="text"
-                      value={section.title}
-                      onChange={(e) => handleSectionChange(section.id, 'title', e.target.value)}
-                      className="flex-1 px-3 h-9 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
-                      placeholder={`部分 ${index + 1} 标题`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSection(section.id)}
-                      disabled={sections.length <= 1}
-                      className="p-1.5 hover:bg-red-50 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                      title="删除部分"
-                    >
-                      <Minus className="w-4 h-4 text-red-600" />
-                    </button>
                   </div>
                 ))}
               </div>

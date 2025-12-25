@@ -58,7 +58,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
       case 'title':
         return `<div class="component"><h2 style="font-size: ${comp.config.size === 'large' ? '24px' : comp.config.size === 'medium' ? '20px' : '18px'}; text-align: ${comp.config.align};">${escapeHtml(comp.config.text || '')}</h2></div>`;
       case 'paragraph':
-        return `<div class="component"><p style="font-size: ${comp.config.size === 'large' ? '18px' : '16px'}; white-space: pre-wrap;">${escapeHtml(comp.config.text || '')}</p></div>`;
+        return `<div class="component"><div style="font-size: ${comp.config.size === 'large' ? '18px' : '16px'}; ${isRichText(comp.config.text || '') ? '' : 'white-space: pre-wrap;'}">${renderTextContent(comp.config.text || '')}</div></div>`;
       case 'hyperlink':
         return `<div class="component"><a href="${escapeHtml(comp.config.url || '')}" target="${comp.config.openInNewTab ? '_blank' : '_self'}" ${comp.config.openInNewTab ? 'rel="noopener noreferrer"' : ''} style="color: #2563eb; text-decoration: underline; font-weight: 500;">${escapeHtml(comp.config.text || '链接')}</a></div>`;
       case 'two-column':
@@ -399,7 +399,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           '<div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;">' +
             '<div style="width: 4px; min-height: 32px; border-radius: 4px; background-color: ' + (section.color || '#3b82f6') + ';"></div>' +
             '<div style="flex: 1;">' +
-              '<h4 style="margin: 0; font-weight: 600; color: #111827;">' + escapeHtml(section.title || '') + '</h4>' +
+              renderTextContent(section.title || '') +
             '</div>' +
           '</div>'
         ).join('');
@@ -407,12 +407,12 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
         return '<div class="component">' +
           '<div class="question">' + questionIndex + '. [代码编辑] </div>' +
           sectionsHTML +
-          '<div style="border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; background: #f9fafb; margin-top: 12px;">' +
-            '<div style="background: #1f2937; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between;">' +
+          '<div style="border: 1px solid #374151; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-top: 12px;">' +
+            '<div style="background: #111827; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #374151;">' +
               '<span style="color: #9ca3af; font-family: monospace; font-size: 12px;">' + escapeHtml(comp.config.language || 'python') + '</span>' +
             '</div>' +
             '<textarea id="code_' + comp.id + '" ' +
-              'style="width: 100%; padding: 16px; background: white; font-family: \'Courier New\', monospace; font-size: 14px; ' +
+              'style="width: 100%; padding: 16px; background: #111827; color: #f3f4f6; font-family: \'Courier New\', monospace; font-size: 14px; ' +
               'resize: vertical; border: none; outline: none; min-height: 240px; box-sizing: border-box;" ' +
               'placeholder="' + escapeHtml(comp.config.placeholder || '请在此输入代码...') + '" ' +
               'onkeydown="if(event.key===\'Tab\'){event.preventDefault();const s=this.selectionStart;const e=this.selectionEnd;this.value=this.value.substring(0,s)+\'    \'+this.value.substring(e);this.selectionStart=this.selectionEnd=s+4;}">' +
@@ -2157,4 +2157,12 @@ function escapeHtml(text: string): string {
     "'": '&#039;'
   };
   return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+function isRichText(text: string): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(text);
+}
+
+function renderTextContent(text: string): string {
+  return isRichText(text) ? text : escapeHtml(text);
 }

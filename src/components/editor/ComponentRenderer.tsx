@@ -45,10 +45,18 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
       );
 
     case 'paragraph':
+      const isRichText = component.config.text && /<\/?[a-z][\s\S]*>/i.test(component.config.text);
       return (
-        <p className={`whitespace-pre-wrap ${component.config.size === 'large' ? 'text-lg' : 'text-base'} ${component.config.text ? 'text-gray-900' : 'text-gray-400'}`}>
-          {component.config.text || '段落文本'}
-        </p>
+        <div
+          className={`prose prose-sm max-w-none ${component.config.size === 'large' ? 'text-lg prose-lg' : 'text-base'} ${component.config.text ? 'text-gray-900' : 'text-gray-400'}`}
+          dangerouslySetInnerHTML={
+            isRichText
+              ? { __html: DOMPurify.sanitize(component.config.text || '') }
+              : undefined
+          }
+        >
+          {!isRichText && (component.config.text || '段落文本')}
+        </div>
       );
 
     case 'hyperlink':
@@ -751,26 +759,36 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
         <div className="space-y-4">
           {component.config.sections && component.config.sections.length > 0 && (
             <div className="space-y-2">
-              {component.config.sections.map((section: any, index: number) => (
-                <div key={section.id} className="flex items-start gap-3">
-                  <div
-                    className="w-1 h-full min-h-[2rem] rounded-full"
-                    style={{ backgroundColor: section.color }}
-                  />
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{section.title}</h4>
+              {component.config.sections.map((section: any, index: number) => {
+                const isSectionRichText = section.title && /<\/?[a-z][\s\S]*>/i.test(section.title);
+                return (
+                  <div key={section.id} className="flex items-start gap-3">
+                    <div
+                      className="w-1 h-full min-h-[2rem] rounded-full"
+                      style={{ backgroundColor: section.color }}
+                    />
+                    <div
+                      className="flex-1 prose prose-sm max-w-none text-gray-900"
+                      dangerouslySetInnerHTML={
+                        isSectionRichText
+                          ? { __html: DOMPurify.sanitize(section.title || '') }
+                          : undefined
+                      }
+                    >
+                      {!isSectionRichText && section.title}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
-          <div className="border border-gray-300 rounded-lg overflow-hidden bg-gray-50">
-            <div className="bg-gray-800 px-3 py-2 flex items-center justify-between">
-              <span className="text-xs text-gray-300 font-mono">{component.config.language || 'python'}</span>
+          <div className="border border-gray-700 rounded-lg overflow-hidden shadow-md">
+            <div className="bg-gray-900 px-3 py-2 flex items-center justify-between border-b border-gray-700">
+              <span className="text-xs text-gray-400 font-mono">{component.config.language || 'python'}</span>
             </div>
             <textarea
-              className="w-full p-4 bg-white font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full p-4 bg-gray-900 text-gray-100 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-600"
               rows={10}
               placeholder={component.config.placeholder || '请在此输入代码...'}
               defaultValue={component.config.initialCode || ''}
