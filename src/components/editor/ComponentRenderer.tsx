@@ -46,16 +46,17 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
 
     case 'paragraph':
       const isRichText = component.config.text && /<\/?[a-z][\s\S]*>/i.test(component.config.text);
+      if (isRichText) {
+        return (
+          <div
+            className={`prose prose-sm max-w-none ${component.config.size === 'large' ? 'text-lg prose-lg' : 'text-base'} text-gray-900`}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(component.config.text || '') }}
+          />
+        );
+      }
       return (
-        <div
-          className={`prose prose-sm max-w-none ${component.config.size === 'large' ? 'text-lg prose-lg' : 'text-base'} ${component.config.text ? 'text-gray-900' : 'text-gray-400'}`}
-          dangerouslySetInnerHTML={
-            isRichText
-              ? { __html: DOMPurify.sanitize(component.config.text || '') }
-              : undefined
-          }
-        >
-          {!isRichText && (component.config.text || '段落文本')}
+        <div className={`prose prose-sm max-w-none ${component.config.size === 'large' ? 'text-lg prose-lg' : 'text-base'} ${component.config.text ? 'text-gray-900' : 'text-gray-400'}`}>
+          {component.config.text || '段落文本'}
         </div>
       );
 
@@ -767,16 +768,16 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
                       className="w-1 h-full min-h-[2rem] rounded-full"
                       style={{ backgroundColor: section.color }}
                     />
-                    <div
-                      className="flex-1 prose prose-sm max-w-none text-gray-900"
-                      dangerouslySetInnerHTML={
-                        isSectionRichText
-                          ? { __html: DOMPurify.sanitize(section.title || '') }
-                          : undefined
-                      }
-                    >
-                      {!isSectionRichText && section.title}
-                    </div>
+                    {isSectionRichText ? (
+                      <div
+                        className="flex-1 prose prose-sm max-w-none text-gray-900"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(section.title || '') }}
+                      />
+                    ) : (
+                      <div className="flex-1 prose prose-sm max-w-none text-gray-900">
+                        {section.title}
+                      </div>
+                    )}
                   </div>
                 );
               })}
