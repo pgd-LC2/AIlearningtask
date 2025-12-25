@@ -85,11 +85,20 @@ export default function RichTextEditor({
     </button>
   );
 
+  const handleToggleMark = (markType: string) => {
+    const isActive = editor.isActive(markType);
+    if (isActive) {
+      editor.chain().focus().unsetMark(markType).run();
+    } else {
+      editor.chain().focus().setMark(markType).run();
+    }
+  };
+
   return (
     <div className={`border-2 border-primary rounded-lg overflow-hidden bg-white ${className}`}>
       <div className="flex items-center gap-0.5 px-2 py-1.5 bg-gray-50 border-b border-gray-200">
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
+          onClick={() => handleToggleMark('bold')}
           isActive={editor.isActive('bold')}
           title="加粗"
         >
@@ -97,7 +106,7 @@ export default function RichTextEditor({
         </ToolbarButton>
 
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
+          onClick={() => handleToggleMark('italic')}
           isActive={editor.isActive('italic')}
           title="斜体"
         >
@@ -105,7 +114,7 @@ export default function RichTextEditor({
         </ToolbarButton>
 
         <ToolbarButton
-          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          onClick={() => handleToggleMark('underline')}
           isActive={editor.isActive('underline')}
           title="下划线"
         >
