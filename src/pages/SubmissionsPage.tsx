@@ -153,54 +153,62 @@ export default function SubmissionsPage() {
           />
         ) : (
           <>
-            {selectedIds.size > 0 && (
-              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <CheckSquare className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm font-semibold text-blue-900">
-                    已选中 {selectedIds.size} 条记录
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setSelectedIds(new Set())}
-                    className="px-3 py-1.5 text-sm text-blue-700 hover:text-blue-800 font-medium transition-colors"
-                  >
-                    取消选择
-                  </button>
-                  <Button
-                    onClick={handleBatchDelete}
-                    variant="secondary"
-                    disabled={deleting}
-                    className="bg-red-600 hover:bg-red-700 text-white border-red-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {deleting ? '删除中...' : '批量删除'}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-white rounded-xl p-3 mb-3 border border-gray-200 flex items-center justify-between">
-              <button
-                onClick={handleSelectAll}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                {selectedIds.size === submissions.length ? (
-                  <>
+            <div className={`rounded-xl p-3 mb-3 border-2 flex items-center justify-between transition-all ${
+              selectedIds.size > 0
+                ? 'bg-blue-50 border-blue-200'
+                : 'bg-white border-gray-200'
+            }`}>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSelectAll}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100/50 rounded-lg transition-colors"
+                >
+                  {selectedIds.size === submissions.length ? (
+                    <>
+                      <CheckSquare className="w-4 h-4 text-blue-600" />
+                      取消全选
+                    </>
+                  ) : (
+                    <>
+                      <Square className="w-4 h-4" />
+                      全选
+                    </>
+                  )}
+                </button>
+                {selectedIds.size > 0 && (
+                  <div className="flex items-center gap-2 pl-3 border-l-2 border-blue-300">
                     <CheckSquare className="w-4 h-4 text-blue-600" />
-                    取消全选
+                    <span className="text-sm font-semibold text-blue-900">
+                      已选中 {selectedIds.size} 条
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedIds.size > 0 ? (
+                  <>
+                    <button
+                      onClick={() => setSelectedIds(new Set())}
+                      className="px-3 py-1.5 text-sm text-blue-700 hover:text-blue-800 font-medium transition-colors"
+                    >
+                      取消选择
+                    </button>
+                    <Button
+                      onClick={handleBatchDelete}
+                      variant="secondary"
+                      disabled={deleting}
+                      className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {deleting ? '删除中...' : '批量删除'}
+                    </Button>
                   </>
                 ) : (
-                  <>
-                    <Square className="w-4 h-4" />
-                    全选
-                  </>
+                  <span className="text-sm text-gray-600">
+                    共 {submissions.length} 条提交记录
+                  </span>
                 )}
-              </button>
-              <span className="text-sm text-gray-600">
-                共 {submissions.length} 条提交记录
-              </span>
+              </div>
             </div>
 
             <div className="space-y-3">
