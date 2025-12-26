@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, User, Users, CheckCircle2, XCircle, AlertCircle, MessageSquare, Download, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, User, Users, CheckCircle2, XCircle, AlertCircle, MessageSquare, Download, Trash2, ThumbsUp, ThumbsDown, Clock } from 'lucide-react';
 import { LessonComponent } from '../../types';
 import { formatDate } from '../../utils/format';
 import { formatAnswer, getQuestionText, QUESTION_TYPE_LABELS } from '../../utils/answer';
@@ -15,11 +15,13 @@ interface SubmissionCardProps {
     answers: Record<string, any>;
     chat_history?: Record<string, Array<{ role: string; content: string }>> | null;
     created_at: string;
+    review_status: 'pending' | 'approved' | 'rejected';
   };
   components: LessonComponent[];
   isSelected?: boolean;
   onSelect?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onReview?: (id: string, status: 'approved' | 'rejected') => void;
 }
 
 export default function SubmissionCard({
@@ -27,7 +29,8 @@ export default function SubmissionCard({
   components,
   isSelected = false,
   onSelect,
-  onDelete
+  onDelete,
+  onReview
 }: SubmissionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
@@ -88,6 +91,42 @@ export default function SubmissionCard({
     onSelect?.(submission.id);
   };
 
+  const handleReview = (e: React.MouseEvent, status: 'approved' | 'rejected') => {
+    e.stopPropagation();
+    onReview?.(submission.id, status);
+  };
+
+  const getReviewStatusDisplay = () => {
+    switch (submission.review_status) {
+      case 'approved':
+        return {
+          icon: <ThumbsUp className="w-4 h-4" />,
+          text: '通过',
+          bgColor: 'bg-green-100',
+          textColor: 'text-green-700',
+          borderColor: 'border-green-300'
+        };
+      case 'rejected':
+        return {
+          icon: <ThumbsDown className="w-4 h-4" />,
+          text: '不通过',
+          bgColor: 'bg-red-100',
+          textColor: 'text-red-700',
+          borderColor: 'border-red-300'
+        };
+      default:
+        return {
+          icon: <Clock className="w-4 h-4" />,
+          text: '待审核',
+          bgColor: 'bg-gray-100',
+          textColor: 'text-gray-600',
+          borderColor: 'border-gray-300'
+        };
+    }
+  };
+
+  const reviewStatus = getReviewStatusDisplay();
+
   return (
     <Card
       className={`hover:border-gray-400 transition-all ${isSelected ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
@@ -109,6 +148,10 @@ export default function SubmissionCard({
               />
             </div>
           )}
+          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${reviewStatus.bgColor} ${reviewStatus.borderColor}`}>
+            <span className={reviewStatus.textColor}>{reviewStatus.icon}</span>
+            <span className={`text-xs font-semibold ${reviewStatus.textColor}`}>{reviewStatus.text}</span>
+          </div>
           <div className="flex items-center gap-2 min-w-[120px]">
             <Users className="w-4 h-4 text-gray-600" />
             <span className="text-sm font-medium text-gray-900">{submission.student_class}班</span>
@@ -261,6 +304,35 @@ export default function SubmissionCard({
                 </div>
               );
             })}
+
+          {onReview && (
+            <div className="mt-6 pt-4 border-t-2 border-gray-300">
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={(e) => handleReview(e, 'approved')}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold transition-all ${
+                    submission.review_status === 'approved'
+                      ? 'bg-green-600 text-white shadow-lg'
+                      : 'bg-white border-2 border-green-600 text-green-600 hover:bg-green-50'
+                  }`}
+                >
+                  <ThumbsUp className="w-4 h-4" />
+                  通过
+                </button>
+                <button
+                  onClick={(e) => handleReview(e, 'rejected')}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold transition-all ${
+                    submission.review_status === 'rejected'
+                      ? 'bg-red-600 text-white shadow-lg'
+                      : 'bg-white border-2 border-red-600 text-red-600 hover:bg-red-50'
+                  }`}
+                >
+                  <ThumbsDown className="w-4 h-4" />
+                  不通过
+                </button>
+              </div>
+            </div>
+          )}
 
           {hasChatHistory && (
             <div className="mt-6 pt-4 border-t border-gray-200">

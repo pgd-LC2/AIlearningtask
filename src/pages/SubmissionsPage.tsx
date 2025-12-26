@@ -16,6 +16,7 @@ interface Submission {
   student_class: string;
   answers: Record<string, any>;
   created_at: string;
+  review_status: 'pending' | 'approved' | 'rejected';
 }
 
 export default function SubmissionsPage() {
@@ -127,6 +128,24 @@ export default function SubmissionsPage() {
     }
   };
 
+  const handleReview = async (id: string, status: 'approved' | 'rejected') => {
+    try {
+      const { error } = await supabase
+        .from('student_submissions')
+        .update({ review_status: status })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSubmissions(prev => prev.map(s =>
+        s.id === id ? { ...s, review_status: status } : s
+      ));
+    } catch (error) {
+      console.error('更新审核状态失败:', error);
+      alert('更新审核状态失败，请重试');
+    }
+  };
+
   const actions = (
     <>
       {submissions.length > 0 && (
@@ -220,6 +239,7 @@ export default function SubmissionsPage() {
                   isSelected={selectedIds.has(submission.id)}
                   onSelect={handleToggleSelect}
                   onDelete={handleDelete}
+                  onReview={handleReview}
                 />
               ))}
             </div>
