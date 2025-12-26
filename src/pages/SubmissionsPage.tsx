@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Download, FileText, Trash2, CheckSquare, Square } from 'lucide-react';
+import { Download, FileText, Trash2, CheckSquare, Square, RefreshCw } from 'lucide-react';
 import { LessonComponent } from '../types';
 import { generateCSV } from '../utils/csv';
 import PageHeader from '../components/layout/PageHeader';
@@ -28,6 +28,7 @@ export default function SubmissionsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -146,6 +147,12 @@ export default function SubmissionsPage() {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
   const actions = (
     <>
       {submissions.length > 0 && (
@@ -193,6 +200,14 @@ export default function SubmissionsPage() {
                       全选
                     </>
                   )}
+                </button>
+                <button
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100/50 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  刷新
                 </button>
                 {selectedIds.size > 0 && (
                   <div className="flex items-center gap-2 pl-3 border-l-2 border-blue-300">
