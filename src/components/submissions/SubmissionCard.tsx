@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, User, Users, CheckCircle2, XCircle, AlertCircle, MessageSquare, Download } from 'lucide-react';
+import { ChevronDown, ChevronUp, User, Users, CheckCircle2, XCircle, AlertCircle, MessageSquare, Download, Trash2 } from 'lucide-react';
 import { LessonComponent } from '../../types';
 import { formatDate } from '../../utils/format';
 import { formatAnswer, getQuestionText, QUESTION_TYPE_LABELS } from '../../utils/answer';
@@ -17,11 +17,21 @@ interface SubmissionCardProps {
     created_at: string;
   };
   components: LessonComponent[];
+  isSelected?: boolean;
+  onSelect?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export default function SubmissionCard({ submission, components }: SubmissionCardProps) {
+export default function SubmissionCard({
+  submission,
+  components,
+  isSelected = false,
+  onSelect,
+  onDelete
+}: SubmissionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const hasChatHistory = submission.chat_history && Object.keys(submission.chat_history).length > 0;
   const totalChatMessages = hasChatHistory
@@ -66,13 +76,39 @@ export default function SubmissionCard({ submission, components }: SubmissionCar
     URL.revokeObjectURL(url);
   };
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm(`确定要删除 ${submission.student_name}（${submission.student_class}班）的提交记录吗？`)) {
+      onDelete?.(submission.id);
+    }
+  };
+
+  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    onSelect?.(submission.id);
+  };
+
   return (
-    <Card className="hover:border-gray-400 transition-colors">
+    <Card
+      className={`hover:border-gray-400 transition-all ${isSelected ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
       <div
         className="flex items-center justify-between cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-4 flex-1">
+          {onSelect && (
+            <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={handleCheckboxChange}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+              />
+            </div>
+          )}
           <div className="flex items-center gap-2 min-w-[120px]">
             <Users className="w-4 h-4 text-gray-600" />
             <span className="text-sm font-medium text-gray-900">{submission.student_class}班</span>
@@ -91,11 +127,22 @@ export default function SubmissionCard({ submission, components }: SubmissionCar
               {totalChatMessages} 条对话
             </Badge>
           )}
-          {expanded ? (
-            <ChevronUp className="w-5 h-5 text-gray-600" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-gray-600" />
-          )}
+          <div className="flex items-center">
+            {isHovered && onDelete && (
+              <button
+                onClick={handleDelete}
+                className="p-1.5 hover:bg-red-50 rounded transition-all mr-1 animate-in slide-in-from-right duration-200"
+                title="删除提交记录"
+              >
+                <Trash2 className="w-4 h-4 text-red-600" />
+              </button>
+            )}
+            {expanded ? (
+              <ChevronUp className="w-5 h-5 text-gray-600" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-600" />
+            )}
+          </div>
         </div>
       </div>
 

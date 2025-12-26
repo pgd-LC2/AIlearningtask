@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, Trash2, CheckSquare, Square } from 'lucide-react';
 import { LessonComponent } from '../types';
 import { generateCSV } from '../utils/csv';
 import PageHeader from '../components/layout/PageHeader';
@@ -25,6 +25,8 @@ export default function SubmissionsPage() {
   const [taskTitle, setTaskTitle] = useState('');
   const [components, setComponents] = useState<LessonComponent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -60,6 +62,71 @@ export default function SubmissionsPage() {
     generateCSV(submissions, components, taskTitle);
   };
 
+  const handleToggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === submissions.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(submissions.map(s => s.id)));
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('student_submissions')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSubmissions(prev => prev.filter(s => s.id !== id));
+      setSelectedIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+    } catch (error) {
+      console.error('删除失败:', error);
+      alert('删除失败，请重试');
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+
+    if (!window.confirm(`确定要删除选中的 ${selectedIds.size} 条提交记录吗？此操作不可恢复。`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('student_submissions')
+        .delete()
+        .in('id', Array.from(selectedIds));
+
+      if (error) throw error;
+
+      setSubmissions(prev => prev.filter(s => !selectedIds.has(s.id)));
+      setSelectedIds(new Set());
+    } catch (error) {
+      console.error('批量删除失败:', error);
+      alert('批量删除失败，请重试');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const actions = (
     <>
       {submissions.length > 0 && (
@@ -85,15 +152,70 @@ export default function SubmissionsPage() {
             description="还没有学生提交作业"
           />
         ) : (
-          <div className="space-y-3">
-            {submissions.map(submission => (
-              <SubmissionCard
-                key={submission.id}
-                submission={submission}
-                components={components}
-              />
-            ))}
-          </div>
+          <>
+            {selectedIds.size > 0 && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <CheckSquare className="w-5 h-5 text-blue-600" />
+                  <span className="text-sm font-semibold text-blue-900">
+                    已选中 {selectedIds.size} 条记录
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedIds(new Set())}
+                    className="px-3 py-1.5 text-sm text-blue-700 hover:text-blue-800 font-medium transition-colors"
+                  >
+                    取消选择
+                  </button>
+                  <Button
+                    onClick={handleBatchDelete}
+                    variant="secondary"
+                    disabled={deleting}
+                    className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {deleting ? '删除中...' : '批量删除'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white rounded-xl p-3 mb-3 border border-gray-200 flex items-center justify-between">
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                {selectedIds.size === submissions.length ? (
+                  <>
+                    <CheckSquare className="w-4 h-4 text-blue-600" />
+                    取消全选
+                  </>
+                ) : (
+                  <>
+                    <Square className="w-4 h-4" />
+                    全选
+                  </>
+                )}
+              </button>
+              <span className="text-sm text-gray-600">
+                共 {submissions.length} 条提交记录
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {submissions.map(submission => (
+                <SubmissionCard
+                  key={submission.id}
+                  submission={submission}
+                  components={components}
+                  isSelected={selectedIds.has(submission.id)}
+                  onSelect={handleToggleSelect}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+          </>
         )}
       </main>
     </div>
