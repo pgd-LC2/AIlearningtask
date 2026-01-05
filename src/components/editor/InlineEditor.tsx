@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { LessonComponent } from '../../types';
 import { uploadImage, pasteImageFromClipboard } from '../../utils/imageUpload';
 import { Upload, Loader2, Plus, Minus } from 'lucide-react';
@@ -46,6 +46,10 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
     }
   }, []);
 
+  const handleSave = useCallback(() => {
+    onSave({ ...component, config: formData });
+  }, [component, formData, onSave]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -55,11 +59,7 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [formData]);
-
-  const handleSave = () => {
-    onSave({ ...component, config: formData });
-  };
+  }, [handleSave]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -259,7 +259,7 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
         );
 
       case 'single-choice':
-      case 'multiple-choice':
+      case 'multiple-choice': {
         const isMultiple = component.type === 'multiple-choice';
         const currentOptions = formData.options || ['', ''];
         const canAddOption = currentOptions.length < 10;
@@ -274,7 +274,7 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
         const handleRemoveOption = (indexToRemove: number) => {
           if (canRemoveOption) {
             const newOptions = currentOptions.filter((_: string, i: number) => i !== indexToRemove);
-            const updatedFormData: any = { ...formData, options: newOptions };
+            const updatedFormData: Record<string, unknown> = { ...formData, options: newOptions };
 
             if (isMultiple) {
               const newCorrectAnswers = (formData.correctAnswers || [])
@@ -400,8 +400,9 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
             </div>
           </div>
         );
+      }
 
-      case 'fill-blank':
+      case 'fill-blank': {
         const blankCount = ((formData.text || '').match(/__/g) || []).length;
         const blankAnswers = formData.correctAnswers || [];
         return (
@@ -457,6 +458,7 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
             )}
           </div>
         );
+      }
 
       case 'question-answer':
         return (
@@ -488,7 +490,7 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
           </div>
         );
 
-      case 'lucky-box':
+      case 'lucky-box': {
         const luckyBoxOptions = formData.options || ['', ''];
         const canAddLuckyOption = luckyBoxOptions.length < 10;
         const canRemoveLuckyOption = luckyBoxOptions.length > 2;
@@ -574,6 +576,7 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
             </div>
           </div>
         );
+      }
 
       case 'embed-html':
         return (
@@ -993,7 +996,7 @@ export default function InlineEditor({ component, onSave, onCancel }: InlineEdit
           });
         };
 
-        const handleParameterChange = (id: string, field: string, value: any) => {
+        const handleParameterChange = (id: string, field: string, value: string | boolean) => {
           setFormData({
             ...formData,
             parameters: (formData.parameters || []).map(p =>

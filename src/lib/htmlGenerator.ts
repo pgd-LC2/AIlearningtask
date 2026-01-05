@@ -1,7 +1,7 @@
 import { LessonComponent } from '../types';
 
 export function generateHTML(title: string, components: LessonComponent[]): string {
-  const htmlContent = components.map((component, index) => generateComponentHTML(component, index)).join('\n');
+  const htmlContent = components.map((component) => generateComponentHTML(component)).join('\n');
 
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -184,15 +184,14 @@ export function generateHTML(title: string, components: LessonComponent[]): stri
 </html>`;
 }
 
-function generateComponentHTML(component: LessonComponent, index: number): string {
-  const id = `component-${index}`;
-
+function generateComponentHTML(component: LessonComponent): string {
   switch (component.type) {
-    case 'title':
+    case 'title': {
       const { text, size, align } = component.config;
       return `<div class="component">
         <h1 class="title-${size} text-${align}">${escapeHtml(text)}</h1>
       </div>`;
+    }
 
     case 'paragraph':
       return `<div class="component">
@@ -293,7 +292,7 @@ function generateComponentHTML(component: LessonComponent, index: number): strin
         </div>
       </div>`;
 
-    case 'embed-html':
+    case 'embed-html': {
       const height = component.config.height || 400;
       if (!component.config.htmlCode) {
         return `<div class="component">
@@ -309,6 +308,7 @@ function generateComponentHTML(component: LessonComponent, index: number): strin
                   sandbox="allow-scripts"></iframe>
         </div>
       </div>`;
+    }
 
     default:
       return '';

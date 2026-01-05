@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { Key, CheckCircle } from 'lucide-react';
 import Button from '../components/ui/Button';
@@ -41,8 +41,8 @@ export default function ActivationPage() {
       } else {
         setError(data?.message || '激活失败');
       }
-    } catch (err: any) {
-      setError(err.message || '激活失败，请重试');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '激活失败，请重试');
     } finally {
       setLoading(false);
     }

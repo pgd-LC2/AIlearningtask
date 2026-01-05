@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
-import { Radio, ChevronLeft, ChevronRight, Power, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Radio, ChevronLeft, ChevronRight, AlertTriangle, Wifi, WifiOff } from 'lucide-react';
 import { navigateToPage, getControlState, updateControlEnabled, sendHeartbeat } from '../../lib/lessonControl';
 import { LessonComponent } from '../../types';
-import Button from '../ui/Button';
 
 interface TeacherControlPanelProps {
   taskId: string;
@@ -21,9 +20,38 @@ export default function TeacherControlPanel({ taskId, components }: TeacherContr
   const totalPages = pages.length;
   const hasPages = totalPages > 1;
 
+  const loadControlState = useCallback(async () => {
+    const state = await getControlState(taskId);
+    if (state) {
+      setEnabled(state.control_enabled);
+      setCurrentPage(state.current_page);
+    }
+  }, [taskId]);
+
+  const startHeartbeat = useCallback(() => {
+    console.log('[教师控制] 开始发送心跳');
+    sendHeartbeat(taskId);
+
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current);
+    }
+
+    heartbeatTimerRef.current = setInterval(() => {
+      sendHeartbeat(taskId);
+    }, 5000);
+  }, [taskId]);
+
+  const stopHeartbeat = useCallback(() => {
+    console.log('[教师控制] 停止发送心跳');
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current);
+      heartbeatTimerRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     loadControlState();
-  }, [taskId]);
+  }, [loadControlState]);
 
   useEffect(() => {
     if (enabled) {
@@ -33,15 +61,7 @@ export default function TeacherControlPanel({ taskId, components }: TeacherContr
     }
 
     return () => stopHeartbeat();
-  }, [enabled, taskId]);
-
-  const loadControlState = async () => {
-    const state = await getControlState(taskId);
-    if (state) {
-      setEnabled(state.control_enabled);
-      setCurrentPage(state.current_page);
-    }
-  };
+  }, [enabled, startHeartbeat, stopHeartbeat]);
 
   const handleToggleControl = async () => {
     if (!hasPages) {
@@ -66,27 +86,6 @@ export default function TeacherControlPanel({ taskId, components }: TeacherContr
       alert('操作失败: ' + result.error);
     }
     setLoading(false);
-  };
-
-  const startHeartbeat = () => {
-    console.log('[教师控制] 开始发送心跳');
-    sendHeartbeat(taskId);
-
-    if (heartbeatTimerRef.current) {
-      clearInterval(heartbeatTimerRef.current);
-    }
-
-    heartbeatTimerRef.current = setInterval(() => {
-      sendHeartbeat(taskId);
-    }, 5000);
-  };
-
-  const stopHeartbeat = () => {
-    console.log('[教师控制] 停止发送心跳');
-    if (heartbeatTimerRef.current) {
-      clearInterval(heartbeatTimerRef.current);
-      heartbeatTimerRef.current = null;
-    }
   };
 
   const handleNavigate = async (page: number) => {

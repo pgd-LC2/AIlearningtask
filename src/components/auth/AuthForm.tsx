@@ -32,8 +32,8 @@ export default function AuthForm({ mode, onSubmit, onToggleMode }: AuthFormProps
     setLoading(true);
     try {
       await onSubmit(email, password);
-    } catch (err: any) {
-      setError(err.message || '操作失败，请重试');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '操作失败，请重试');
     } finally {
       setLoading(false);
     }

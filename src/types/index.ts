@@ -14,7 +14,8 @@ export type ComponentType =
   | 'ai-chatbox'
   | 'ai-html-generator'
   | 'page-break'
-  | 'hyperlink';
+  | 'hyperlink'
+  | 'code-editor';
 
 export interface BaseComponent {
   id: string;
@@ -106,6 +107,7 @@ export interface EmbedHtmlComponent extends BaseComponent {
   config: {
     htmlCode: string;
     height?: number;
+    width?: number;
   };
 }
 
@@ -152,6 +154,7 @@ export interface HyperlinkComponent extends BaseComponent {
   config: {
     text: string;
     url: string;
+    openInNewTab?: boolean;
   };
 }
 
@@ -177,6 +180,22 @@ export interface AIHtmlGeneratorComponent extends BaseComponent {
   };
 }
 
+export interface CodeEditorSection {
+  id: string;
+  title: string;
+  color: string;
+}
+
+export interface CodeEditorComponent extends BaseComponent {
+  type: 'code-editor';
+  config: {
+    sections?: CodeEditorSection[];
+    language?: string;
+    initialCode?: string;
+    placeholder?: string;
+  };
+}
+
 export type LessonComponent =
   | TitleComponent
   | ParagraphComponent
@@ -193,7 +212,8 @@ export type LessonComponent =
   | AIChatboxComponent
   | AIHtmlGeneratorComponent
   | PageBreakComponent
-  | HyperlinkComponent;
+  | HyperlinkComponent
+  | CodeEditorComponent;
 
 export interface LessonTask {
   id: string;

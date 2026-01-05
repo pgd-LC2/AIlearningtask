@@ -91,7 +91,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
             ).join('') +
           '</div>' +
         '</div>';
-      case 'fill-blank':
+      case 'fill-blank': {
         questionIndex++;
         const text = comp.config.text || '';
         const parts = text.split('__');
@@ -102,6 +102,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           ).join('') +
           '</div>' +
         '</div>';
+      }
       case 'question-answer':
         questionIndex++;
         return '<div class="component">' +
@@ -109,7 +110,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           '<textarea class="question-answer-input" id="q_' + comp.id + '" rows="6" placeholder="请输入答案"' +
           (comp.config.maxLength ? ' maxlength="' + comp.config.maxLength + '"' : '') + '></textarea>' +
         '</div>';
-      case 'lucky-box':
+      case 'lucky-box': {
         const luckyOptions = (comp.config.options || []).map((opt: string) => escapeHtml(opt));
         return '<div class="component">' +
           '<div class="question">' + escapeHtml(comp.config.title || '盲盒抽取') + '</div>' +
@@ -118,7 +119,8 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           '<div id="lucky_' + comp.id + '" class="lucky-result" style="margin-top: 16px; font-size: 20px; font-weight: 700; min-height: 30px;"></div>' +
           '<script>window.luckyBoxData = window.luckyBoxData || {}; window.luckyBoxData[\'' + comp.id + '\'] = {options: ' + JSON.stringify(luckyOptions) + ', mode: \'' + (comp.config.mode || 'random') + '\'};</script>' +
         '</div>';
-      case 'embed-html':
+      }
+      case 'embed-html': {
         if (!comp.config.htmlCode) return '';
         const embedId = 'embed_' + comp.id;
         const btnRefreshId = 'btn_refresh_' + comp.id;
@@ -221,7 +223,8 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           '})();' +
           '</script>' +
         '</div>';
-      case 'image':
+      }
+      case 'image': {
         if (!comp.config.url) return '';
         const imgAlign = comp.config.align || 'center';
         const imgTextAlign = imgAlign === 'left' ? 'text-align: left;' : imgAlign === 'right' ? 'text-align: right;' : 'text-align: center;';
@@ -232,7 +235,8 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           (comp.config.alt ? '<p style="margin-top: 8px; font-size: 14px; color: #4b5563; ' + imgTextAlign + '">' + escapeHtml(comp.config.alt) + '</p>' : '') +
           '</div>' +
         '</div>';
-      case 'video':
+      }
+      case 'video': {
         if (!comp.config.embedCode) return '';
         const videoHeight = comp.config.height || 400;
         let embedCode = comp.config.embedCode.trim();
@@ -279,6 +283,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           embedCode +
           '</div>' +
         '</div>';
+      }
       case 'ai-chatbox':
         return '<div class="component ai-chatbox-component" id="chatbox_' + comp.id + '">' +
           '<div class="chatbox-header">' +
@@ -338,9 +343,9 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
             '</button>' +
           '</div>' +
         '</div>';
-      case 'ai-html-generator':
+      case 'ai-html-generator': {
         const genId = 'gen_' + comp.id;
-        const parametersHtml = (comp.config.parameters || []).map(param => {
+        const parametersHtml = (comp.config.parameters || []).map((param: { type: string; name: string; placeholder?: string; required?: boolean; label: string; options?: string[] }) => {
           let inputHtml = '';
           if (param.type === 'text') {
             inputHtml = '<input type="text" id="param_' + comp.id + '_' + param.name + '" ' +
@@ -393,9 +398,10 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
             '};' +
           '</script>' +
         '</div>';
-      case 'code-editor':
+      }
+      case 'code-editor': {
         questionIndex++;
-        const sectionsHTML = (comp.config.sections || []).map((section: any) =>
+        const sectionsHTML = (comp.config.sections || []).map((section: { color?: string; title?: string }) =>
           '<div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;">' +
             '<div style="width: 4px; min-height: 32px; border-radius: 4px; background-color: ' + (section.color || '#3b82f6') + ';"></div>' +
             '<div style="flex: 1;">' +
@@ -420,6 +426,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
             '</textarea>' +
           '</div>' +
         '</div>';
+      }
       default:
         return '';
     }

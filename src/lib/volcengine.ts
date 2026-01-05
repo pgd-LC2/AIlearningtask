@@ -159,7 +159,7 @@ export async function callVolcengineStream(
             if (parsed.choices?.[0]?.delta?.reasoning_content) {
               onChunk(parsed.choices[0].delta.reasoning_content, true);
             }
-          } catch (e) {
+          } catch {
             console.warn('Failed to parse SSE data:', data);
           }
         }

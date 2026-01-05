@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { LessonTask, Folder, LessonControl } from '../types';
 import { FileText, FolderOpen } from 'lucide-react';
@@ -23,11 +23,7 @@ export default function HomePage() {
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
   const [controlStates, setControlStates] = useState<Map<string, boolean>>(new Map());
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user) return;
 
     const [tasksResult, foldersResult, controlsResult] = await Promise.all([
@@ -63,7 +59,11 @@ export default function HomePage() {
     }
 
     setLoading(false);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const createNewTask = async () => {
     if (!user) return;
