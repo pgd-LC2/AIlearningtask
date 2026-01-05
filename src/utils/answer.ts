@@ -6,18 +6,19 @@ export function getQuestionText(component: LessonComponent): string {
   }
   if (component.type === 'code-editor') {
     const sections = component.config.sections || [];
-    return sections.map((s: any) => s.title).filter(Boolean).join(' / ') || '代码编辑题';
+    return sections.map((s: { title?: string }) => s.title).filter(Boolean).join(' / ') || '代码编辑题';
   }
   return component.config.question || '';
 }
 
-export function formatAnswer(component: LessonComponent, answer: any): string {
+export function formatAnswer(component: LessonComponent, answer: number | number[] | string | string[]): string {
   if (!component) return JSON.stringify(answer);
 
   switch (component.type) {
-    case 'single-choice':
+    case 'single-choice': {
       const option = component.config.options[answer];
       return option ? String.fromCharCode(65 + answer) : '未作答';
+    }
 
     case 'multiple-choice':
       if (!Array.isArray(answer) || answer.length === 0) return '未作答';

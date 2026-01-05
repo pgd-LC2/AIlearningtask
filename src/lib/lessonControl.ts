@@ -109,7 +109,7 @@ export async function navigateToPage(
         timestamp: Date.now()
       };
 
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve) => {
         let resolved = false;
 
         const timeoutId = setTimeout(() => {
@@ -141,7 +141,7 @@ export async function navigateToPage(
                     resolve();
                   }
                 }, 500);
-              } catch (err) {
+              } catch {
                 if (!resolved) {
                   resolved = true;
                   clearTimeout(timeoutId);

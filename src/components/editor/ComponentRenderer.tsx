@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
 import { Minus, Send, Loader2, Brain, RefreshCw, Play, Pause, Maximize2, X, ExternalLink, Plus, Image as ImageIcon, Link as LinkIcon, ChevronDown, ChevronUp } from 'lucide-react';
@@ -15,6 +15,7 @@ interface ChatMessage {
 }
 
 export default function ComponentRenderer({ component }: ComponentRendererProps) {
+  // All hooks must be at the top level, not inside switch cases
   const [luckyResult, setLuckyResult] = useState<string>('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -26,6 +27,22 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const streamingIndicesRef = useRef<{ reasoning: number; assistant: number }>({ reasoning: -1, assistant: -1 });
 
+  // Hooks for embed-html component
+  const embedIframeRef = useRef<HTMLIFrameElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Hooks for ai-chatbox component
+  const [isChatFullscreen, setIsChatFullscreen] = useState(false);
+
+  // Hooks for ai-html-generator component
+  const [paramValues, setParamValues] = useState<Record<string, string>>({});
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiOutput, setAiOutput] = useState('');
+  const [generatedHtml, setGeneratedHtml] = useState('');
+  const [showThinking, setShowThinking] = useState(true);
+  const htmlIframeRef = useRef<HTMLIFrameElement>(null);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -34,8 +51,81 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
     scrollToBottom();
   }, [chatMessages]);
 
+  // Extract htmlCode for embed-html component to use in dependency array
+  const embedHtmlCode = component.type === 'embed-html' ? component.config.htmlCode : null;
+
+  // Effect for embed-html iframe loading
+  const loadIframeContent = useCallback(() => {
+    if (component.type === 'embed-html' && embedIframeRef.current && embedHtmlCode) {
+      const iframe = embedIframeRef.current;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        const isFullDoc = /<!DOCTYPE|<html/i.test(embedHtmlCode);
+        if (isFullDoc) {
+          doc.write(embedHtmlCode);
+        } else {
+          doc.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <meta charset="UTF-8">
+              <style>
+                body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; overflow: auto; }
+              </style>
+            </head>
+            <body>
+              ${embedHtmlCode}
+            </body>
+            </html>
+          `);
+        }
+        doc.close();
+      }
+    }
+  }, [component.type, embedHtmlCode]);
+
+  useEffect(() => {
+    if (component.type === 'embed-html') {
+      loadIframeContent();
+    }
+  }, [component.type, loadIframeContent]);
+
+  // Effect for ai-html-generator iframe rendering
+  const renderHtmlInIframe = (html: string) => {
+    if (htmlIframeRef.current && html) {
+      const iframe = htmlIframeRef.current;
+      const isFullDoc = /<!DOCTYPE|<html/i.test(html);
+      let finalHtml = html;
+
+      if (!isFullDoc) {
+        finalHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; overflow: auto; }
+  </style>
+</head>
+<body>
+  ${html}
+</body>
+</html>`;
+      }
+
+      iframe.srcdoc = finalHtml;
+    }
+  };
+
+  useEffect(() => {
+    if (component.type === 'ai-html-generator' && generatedHtml) {
+      renderHtmlInIframe(generatedHtml);
+    }
+  }, [component.type, generatedHtml]);
+
   switch (component.type) {
-    case 'title':
+    case 'title': {
       const titleSizes = { large: 'text-3xl', medium: 'text-2xl', small: 'text-xl' };
       const titleAligns = { left: 'text-left', center: 'text-center', right: 'text-right' };
       return (
@@ -43,8 +133,9 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
           {component.config.text || '标题文本'}
         </h1>
       );
+    }
 
-    case 'paragraph':
+    case 'paragraph': {
       const isRichText = component.config.text && /<\/?[a-z][\s\S]*>/i.test(component.config.text);
       if (isRichText) {
         return (
@@ -59,6 +150,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
           {component.config.text || '段落文本'}
         </div>
       );
+    }
 
     case 'hyperlink':
       return (
@@ -142,7 +234,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
         </div>
       );
 
-    case 'fill-blank':
+    case 'fill-blank': {
       const parts = (component.config.text || '填空题示例：__表示空格').split('__');
       return (
         <div>
@@ -160,6 +252,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
           </p>
         </div>
       );
+    }
 
     case 'question-answer':
       return (
@@ -168,7 +261,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
         </div>
       );
 
-    case 'lucky-box':
+    case 'lucky-box': {
       const drawLuckyBox = () => {
         const options = component.config.options;
         if (component.config.mode === 'random') {
@@ -197,47 +290,11 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
           )}
         </div>
       );
+    }
 
-    case 'embed-html':
-      const iframeRef = useRef<HTMLIFrameElement>(null);
-      const [isPaused, setIsPaused] = useState(false);
-      const [isFullscreen, setIsFullscreen] = useState(false);
+    case 'embed-html': {
       const customWidth = component.config.width ? `${component.config.width}px` : '100%';
-      const customHeight = component.config.height ? parseInt(component.config.height) : 800;
-
-      const loadIframeContent = () => {
-        if (iframeRef.current && component.config.htmlCode) {
-          const iframe = iframeRef.current;
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (doc) {
-            doc.open();
-            const isFullDoc = /<!DOCTYPE|<html/i.test(component.config.htmlCode);
-            if (isFullDoc) {
-              doc.write(component.config.htmlCode);
-            } else {
-              doc.write(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                  <meta charset="UTF-8">
-                  <style>
-                    body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; overflow: auto; }
-                  </style>
-                </head>
-                <body>
-                  ${component.config.htmlCode}
-                </body>
-                </html>
-              `);
-            }
-            doc.close();
-          }
-        }
-      };
-
-      useEffect(() => {
-        loadIframeContent();
-      }, [component.config.htmlCode]);
+      const customHeight = component.config.height ? Number(component.config.height) : 800;
 
       const handleRefresh = () => {
         loadIframeContent();
@@ -245,8 +302,8 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
       };
 
       const handlePausePlay = () => {
-        if (iframeRef.current) {
-          const iframe = iframeRef.current;
+        if (embedIframeRef.current) {
+          const iframe = embedIframeRef.current;
           const win = iframe.contentWindow;
           if (win) {
             if (isPaused) {
@@ -298,7 +355,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
                 </div>
                 <div className="border border-gray-200 rounded-lg bg-white overflow-auto" style={{ maxHeight: `${customHeight}px`, width: customWidth }}>
                   <iframe
-                    ref={iframeRef}
+                    ref={embedIframeRef}
                     className="w-full"
                     style={{ minHeight: '200px', border: 'none' }}
                     sandbox="allow-scripts allow-same-origin"
@@ -335,7 +392,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
                   </div>
                   <div className="flex-1 overflow-auto">
                     <iframe
-                      ref={iframeRef}
+                      ref={embedIframeRef}
                       className="w-full h-full"
                       style={{ border: 'none' }}
                       sandbox="allow-scripts allow-same-origin"
@@ -352,8 +409,9 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
           )}
         </div>
       );
+    }
 
-    case 'image':
+    case 'image': {
       const imageAligns = { left: 'mr-auto', center: 'mx-auto', right: 'ml-auto' };
       const textAligns = { left: 'text-left', center: 'text-center', right: 'text-right' };
       return (
@@ -378,6 +436,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
           )}
         </div>
       );
+    }
 
     case 'video':
       return (
@@ -413,7 +472,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
         </div>
       );
 
-    case 'ai-chatbox':
+    case 'ai-chatbox': {
       const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -562,8 +621,6 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
           streamingIndicesRef.current = { reasoning: -1, assistant: -1 };
         }
       };
-
-      const [isChatFullscreen, setIsChatFullscreen] = useState(false);
 
       const toggleReasoningCollapse = (index: number) => {
         setCollapsedReasoning(prev => {
@@ -754,13 +811,14 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
           {chatContent(false)}
         </div>
       );
+    }
 
     case 'code-editor':
       return (
         <div className="space-y-4">
           {component.config.sections && component.config.sections.length > 0 && (
             <div className="space-y-2">
-              {component.config.sections.map((section: any, index: number) => {
+              {component.config.sections.map((section: { id: string; title?: string; color?: string }) => {
                 const isSectionRichText = section.title && /<\/?[a-z][\s\S]*>/i.test(section.title);
                 return (
                   <div key={section.id} className="flex items-start gap-3">
@@ -809,46 +867,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
         </div>
       );
 
-    case 'ai-html-generator':
-      const [paramValues, setParamValues] = useState<Record<string, string>>({});
-      const [isGenerating, setIsGenerating] = useState(false);
-      const [aiOutput, setAiOutput] = useState('');
-      const [generatedHtml, setGeneratedHtml] = useState('');
-      const [showThinking, setShowThinking] = useState(true);
-      const htmlIframeRef = useRef<HTMLIFrameElement>(null);
-
-      const renderHtmlInIframe = (html: string) => {
-        if (htmlIframeRef.current && html) {
-          const iframe = htmlIframeRef.current;
-          const isFullDoc = /<!DOCTYPE|<html/i.test(html);
-          let finalHtml = html;
-
-          if (!isFullDoc) {
-            finalHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; overflow: auto; }
-  </style>
-</head>
-<body>
-  ${html}
-</body>
-</html>`;
-          }
-
-          iframe.srcdoc = finalHtml;
-        }
-      };
-
-      useEffect(() => {
-        if (generatedHtml) {
-          renderHtmlInIframe(generatedHtml);
-        }
-      }, [generatedHtml]);
-
+    case 'ai-html-generator': {
       const extractHtmlFromOutput = (text: string): string => {
         const htmlBlockMatch = text.match(/```html\n([\s\S]*?)\n```/);
         if (htmlBlockMatch) {
@@ -1028,6 +1047,7 @@ export default function ComponentRenderer({ component }: ComponentRendererProps)
           )}
         </div>
       );
+    }
 
     default:
       return <div>未知组件类型</div>;

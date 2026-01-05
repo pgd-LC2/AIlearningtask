@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { LessonComponent } from '../types';
 import { Save, Eye, Download } from 'lucide-react';
 import { generateStudentHTML } from '../utils/htmlGenerator';
 import { useAutoSave } from '../hooks/useAutoSave';
-import { getControlState } from '../lib/lessonControl';
 import PageHeader from '../components/layout/PageHeader';
 import ComponentLibrary from '../components/editor/ComponentLibrary';
 import Canvas from '../components/editor/Canvas';
@@ -22,22 +21,28 @@ export default function EditorPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [generating, setGenerating] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [controlEnabled, setControlEnabled] = useState(false);
+
+  const loadTask = useCallback(async () => {
+    if (!id || !user) return;
+
+    const { data, error } = await supabase
+      .from('lesson_tasks')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!error && data) {
+      setTitle(data.title);
+      setComponents(Array.isArray(data.content_json) ? data.content_json : []);
+    }
+  }, [id, user]);
 
   useEffect(() => {
     if (id) {
       loadTask();
-      loadControlState();
     }
-  }, [id]);
-
-  const loadControlState = async () => {
-    if (!id) return;
-    const state = await getControlState(id);
-    if (state) {
-      setControlEnabled(state.control_enabled);
-    }
-  };
+  }, [id, loadTask]);
 
   const saveTask = useCallback(async () => {
     if (!id || !user) return;
@@ -63,22 +68,6 @@ export default function EditorPage() {
     onSave: saveTask,
     enabled: components.length > 0 || title !== '未命名学习单'
   });
-
-  const loadTask = async () => {
-    if (!id || !user) return;
-
-    const { data, error } = await supabase
-      .from('lesson_tasks')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (!error && data) {
-      setTitle(data.title);
-      setComponents(Array.isArray(data.content_json) ? data.content_json : []);
-    }
-  };
 
   const handleAddComponent = (component: LessonComponent) => {
     const newIndex = components.length;

@@ -1,6 +1,6 @@
 import { BookOpen, LogOut, Plus, Trash2, Settings, FolderPlus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import Button from '../ui/Button';
 import IconButton from '../ui/IconButton';
 

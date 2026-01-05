@@ -32,7 +32,7 @@ export default function ComponentLibrary({ onAddComponent }: ComponentLibraryPro
       case 'three-column':
         return { id, type, config: { content1: '', content2: '', content3: '' } };
       case 'single-choice':
-        return { id, type, config: { question: '', options: ['', ''], explanation: '' } };
+        return { id, type, config: { question: '', options: ['', ''], correctAnswer: 0, explanation: '' } };
       case 'multiple-choice':
         return { id, type, config: { question: '', options: ['', ''], correctAnswers: [], explanation: '' } };
       case 'fill-blank':

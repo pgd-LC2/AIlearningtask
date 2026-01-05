@@ -5,7 +5,7 @@ import { formatDate } from './format';
 interface Submission {
   student_class: string;
   student_name: string;
-  answers: Record<string, any>;
+  answers: Record<string, number | number[] | string | string[]>;
   created_at: string;
 }
 

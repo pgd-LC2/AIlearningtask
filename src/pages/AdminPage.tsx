@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { Key, Plus, Copy, CheckCircle, XCircle } from 'lucide-react';
 import Button from '../components/ui/Button';
@@ -75,8 +75,8 @@ export default function AdminPage() {
       setCount(1);
       setNote('');
       loadCodes();
-    } catch (err: any) {
-      alert('生成失败: ' + err.message);
+    } catch (err: unknown) {
+      alert('生成失败: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
       setGenerating(false);
     }

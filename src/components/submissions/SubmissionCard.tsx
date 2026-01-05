@@ -12,7 +12,7 @@ interface SubmissionCardProps {
     id: string;
     student_name: string;
     student_class: string;
-    answers: Record<string, any>;
+    answers: Record<string, number | number[] | string | string[]>;
     chat_history?: Record<string, Array<{ role: string; content: string }>> | null;
     created_at: string;
     review_status: 'pending' | 'approved' | 'rejected';
@@ -51,7 +51,7 @@ export default function SubmissionCard({
     Object.entries(submission.chat_history).forEach(([chatboxId, messages]) => {
       const chatboxComponent = components.find(c => c.id === chatboxId);
       const chatboxTitle = chatboxComponent?.type === 'ai-chatbox'
-        ? (chatboxComponent.config as any).title || 'AI 对话'
+        ? (chatboxComponent.config as { title?: string }).title || 'AI 对话'
         : 'AI 对话';
 
       content += `【${chatboxTitle}】\n`;
@@ -369,7 +369,7 @@ export default function SubmissionCard({
                   {Object.entries(submission.chat_history!).map(([chatboxId, messages]) => {
                     const chatboxComponent = components.find(c => c.id === chatboxId);
                     const chatboxTitle = chatboxComponent?.type === 'ai-chatbox'
-                      ? (chatboxComponent.config as any).title || 'AI 对话'
+                      ? (chatboxComponent.config as { title?: string }).title || 'AI 对话'
                       : 'AI 对话';
 
                     return (

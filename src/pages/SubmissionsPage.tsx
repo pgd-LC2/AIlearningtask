@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { Download, FileText, Trash2, CheckSquare, Square, RefreshCw } from 'lucide-react';
 import { LessonComponent } from '../types';
@@ -14,7 +14,7 @@ interface Submission {
   id: string;
   student_name: string;
   student_class: string;
-  answers: Record<string, any>;
+  answers: Record<string, number | number[] | string | string[]>;
   created_at: string;
   review_status: 'pending' | 'approved' | 'rejected';
 }
@@ -30,11 +30,7 @@ export default function SubmissionsPage() {
   const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, [taskId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!taskId || !user) return;
 
     const { data: task } = await supabase
@@ -58,7 +54,11 @@ export default function SubmissionsPage() {
       setSubmissions(data);
     }
     setLoading(false);
-  };
+  }, [taskId, user]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleExportCSV = () => {
     generateCSV(submissions, components, taskTitle);

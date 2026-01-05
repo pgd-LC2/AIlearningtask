@@ -1,15 +1,17 @@
 import { LessonComponent } from '../types';
 
+type AnswerValue = number | number[] | string | string[] | null;
+
 export interface ComparisonResult {
   isCorrect: boolean;
-  studentAnswer: any;
-  correctAnswer: any;
+  studentAnswer: AnswerValue;
+  correctAnswer: AnswerValue;
   detail?: string;
 }
 
 export function compareAnswers(
   component: LessonComponent,
-  studentAnswer: any
+  studentAnswer: AnswerValue
 ): ComparisonResult {
   const correctAnswer = getCorrectAnswer(component);
 
@@ -30,7 +32,7 @@ export function compareAnswers(
         correctAnswer
       };
 
-    case 'multiple-choice':
+    case 'multiple-choice': {
       if (!Array.isArray(studentAnswer) || !Array.isArray(correctAnswer)) {
         return { isCorrect: false, studentAnswer, correctAnswer };
       }
@@ -38,8 +40,9 @@ export function compareAnswers(
       const sortedCorrect = [...correctAnswer].sort();
       const isCorrect = JSON.stringify(sortedStudent) === JSON.stringify(sortedCorrect);
       return { isCorrect, studentAnswer, correctAnswer };
+    }
 
-    case 'fill-blank':
+    case 'fill-blank': {
       if (!Array.isArray(studentAnswer) || !Array.isArray(correctAnswer)) {
         return { isCorrect: false, studentAnswer, correctAnswer };
       }
@@ -49,6 +52,7 @@ export function compareAnswers(
         return normalizeText(answer) === normalizeText(expected);
       });
       return { isCorrect: allCorrect, studentAnswer, correctAnswer };
+    }
 
     case 'question-answer':
       return {
@@ -71,7 +75,7 @@ export function compareAnswers(
   }
 }
 
-function getCorrectAnswer(component: LessonComponent): any {
+function getCorrectAnswer(component: LessonComponent): AnswerValue {
   switch (component.type) {
     case 'single-choice':
       return component.config.correctAnswer ?? null;
@@ -100,9 +104,10 @@ export function formatCorrectAnswer(component: LessonComponent): string {
   }
 
   switch (component.type) {
-    case 'single-choice':
+    case 'single-choice': {
       const option = component.config.options?.[correctAnswer];
       return option ? String.fromCharCode(65 + correctAnswer) : '未设置';
+    }
 
     case 'multiple-choice':
       if (!Array.isArray(correctAnswer) || correctAnswer.length === 0) return '未设置';
