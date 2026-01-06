@@ -8,6 +8,7 @@ import AdminPage from './pages/AdminPage';
 import HomePage from './pages/HomePage';
 import EditorPage from './pages/EditorPage';
 import SubmissionsPage from './pages/SubmissionsPage';
+import VersionHistoryPage from './pages/VersionHistoryPage';
 
 function App() {
   return (
@@ -45,6 +46,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <EditorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/editor/:id/history"
+            element={
+              <ProtectedRoute>
+                <VersionHistoryPage />
               </ProtectedRoute>
             }
           />

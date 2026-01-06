@@ -1,26 +1,36 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { LessonComponent } from '../types';
-import { Save, Eye, Download } from 'lucide-react';
+import { Save, Eye, Download, History } from 'lucide-react';
 import { generateStudentHTML } from '../utils/htmlGenerator';
 import { useAutoSave } from '../hooks/useAutoSave';
+import { useDraft } from '../hooks/useDraft';
 import PageHeader from '../components/layout/PageHeader';
 import ComponentLibrary from '../components/editor/ComponentLibrary';
 import Canvas from '../components/editor/Canvas';
 import TeacherControlPanel from '../components/editor/TeacherControlPanel';
+import DraftRecoveryBanner from '../components/editor/DraftRecoveryBanner';
 import Button from '../components/ui/Button';
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [title, setTitle] = useState('未命名学习单');
   const [components, setComponents] = useState<LessonComponent[]>([]);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [generating, setGenerating] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
+  const [draftTime, setDraftTime] = useState<Date | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const initialLoadRef = useRef(true);
+  const lastSavedDataRef = useRef<{ title: string; components: LessonComponent[] } | null>(null);
+
+  const { saveDraft, saveDraftImmediately, loadDraft, clearDraft } = useDraft(id);
 
   const loadTask = useCallback(async () => {
     if (!id || !user) return;
@@ -33,10 +43,27 @@ export default function EditorPage() {
       .maybeSingle();
 
     if (!error && data) {
-      setTitle(data.title);
-      setComponents(Array.isArray(data.content_json) ? data.content_json : []);
+      const dbTitle = data.title;
+      const dbComponents = Array.isArray(data.content_json) ? data.content_json : [];
+      const dbUpdatedAt = new Date(data.updated_at).getTime();
+
+      const draft = loadDraft();
+      if (draft && draft.timestamp > dbUpdatedAt) {
+        setShowDraftBanner(true);
+        setDraftTime(new Date(draft.timestamp));
+        setTitle(dbTitle);
+        setComponents(dbComponents);
+      } else {
+        setTitle(dbTitle);
+        setComponents(dbComponents);
+        if (draft) {
+          clearDraft();
+        }
+      }
+
+      lastSavedDataRef.current = { title: dbTitle, components: dbComponents };
     }
-  }, [id, user]);
+  }, [id, user, loadDraft, clearDraft]);
 
   useEffect(() => {
     if (id) {
@@ -60,14 +87,76 @@ export default function EditorPage() {
 
     if (!error) {
       setLastSaved(new Date());
+      setHasUnsavedChanges(false);
+      lastSavedDataRef.current = { title, components };
+      clearDraft();
+
+      await supabase
+        .from('lesson_task_versions')
+        .insert({
+          task_id: id,
+          user_id: user.id,
+          title,
+          content_json: components,
+          change_description: '自动保存',
+        });
     }
     setSaving(false);
-  }, [id, user, title, components]);
+  }, [id, user, title, components, clearDraft]);
 
   useAutoSave({
     onSave: saveTask,
+    delay: 10000,
     enabled: components.length > 0 || title !== '未命名学习单'
   });
+
+  useEffect(() => {
+    if (initialLoadRef.current) {
+      initialLoadRef.current = false;
+      return;
+    }
+
+    saveDraft(title, components);
+    setHasUnsavedChanges(true);
+  }, [title, components, saveDraft]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        saveDraftImmediately(title, components);
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden && hasUnsavedChanges) {
+        saveDraftImmediately(title, components);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [hasUnsavedChanges, title, components, saveDraftImmediately]);
+
+  const handleRestoreDraft = () => {
+    const draft = loadDraft();
+    if (draft) {
+      setTitle(draft.title);
+      setComponents(draft.components);
+      setShowDraftBanner(false);
+    }
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraft();
+    setShowDraftBanner(false);
+  };
 
   const handleAddComponent = (component: LessonComponent) => {
     const newIndex = components.length;
@@ -162,11 +251,21 @@ export default function EditorPage() {
     window.open(url, '_blank');
   };
 
+  const handleViewHistory = () => {
+    if (id) {
+      navigate(`/editor/${id}/history`);
+    }
+  };
+
   const actions = (
     <>
       <div className="text-xs text-gray-600">
         {saving ? '保存中...' : lastSaved ? `已保存 ${lastSaved.toLocaleTimeString()}` : ''}
       </div>
+      <Button onClick={handleViewHistory} variant="ghost">
+        <History className="w-4 h-4" />
+        历史版本
+      </Button>
       <Button onClick={saveTask} disabled={saving} variant="ghost">
         <Save className="w-4 h-4" />
         {saving ? '保存中...' : '保存'}
@@ -190,6 +289,14 @@ export default function EditorPage() {
         editable
         onTitleChange={setTitle}
       />
+
+      {showDraftBanner && draftTime && (
+        <DraftRecoveryBanner
+          draftTime={draftTime}
+          onRestore={handleRestoreDraft}
+          onDiscard={handleDiscardDraft}
+        />
+      )}
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-80 flex-shrink-0">
