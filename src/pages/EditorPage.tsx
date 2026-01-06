@@ -11,7 +11,6 @@ import PageHeader from '../components/layout/PageHeader';
 import ComponentLibrary from '../components/editor/ComponentLibrary';
 import Canvas from '../components/editor/Canvas';
 import TeacherControlPanel from '../components/editor/TeacherControlPanel';
-import DraftRecoveryBanner from '../components/editor/DraftRecoveryBanner';
 import Button from '../components/ui/Button';
 
 export default function EditorPage() {
@@ -24,8 +23,6 @@ export default function EditorPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [generating, setGenerating] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [showDraftBanner, setShowDraftBanner] = useState(false);
-  const [draftTime, setDraftTime] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const initialLoadRef = useRef(true);
   const lastSavedDataRef = useRef<{ title: string; components: LessonComponent[] } | null>(null);
@@ -49,19 +46,17 @@ export default function EditorPage() {
 
       const draft = loadDraft();
       if (draft && draft.timestamp > dbUpdatedAt) {
-        setShowDraftBanner(true);
-        setDraftTime(new Date(draft.timestamp));
-        setTitle(dbTitle);
-        setComponents(dbComponents);
+        setTitle(draft.title);
+        setComponents(draft.components);
+        lastSavedDataRef.current = { title: draft.title, components: draft.components };
       } else {
         setTitle(dbTitle);
         setComponents(dbComponents);
         if (draft) {
           clearDraft();
         }
+        lastSavedDataRef.current = { title: dbTitle, components: dbComponents };
       }
-
-      lastSavedDataRef.current = { title: dbTitle, components: dbComponents };
     }
   }, [id, user, loadDraft, clearDraft]);
 
@@ -143,20 +138,6 @@ export default function EditorPage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [hasUnsavedChanges, title, components, saveDraftImmediately]);
-
-  const handleRestoreDraft = () => {
-    const draft = loadDraft();
-    if (draft) {
-      setTitle(draft.title);
-      setComponents(draft.components);
-      setShowDraftBanner(false);
-    }
-  };
-
-  const handleDiscardDraft = () => {
-    clearDraft();
-    setShowDraftBanner(false);
-  };
 
   const handleAddComponent = (component: LessonComponent) => {
     const newIndex = components.length;
@@ -289,14 +270,6 @@ export default function EditorPage() {
         editable
         onTitleChange={setTitle}
       />
-
-      {showDraftBanner && draftTime && (
-        <DraftRecoveryBanner
-          draftTime={draftTime}
-          onRestore={handleRestoreDraft}
-          onDiscard={handleDiscardDraft}
-        />
-      )}
 
       <div className="flex-1 flex overflow-hidden">
         <div className="w-80 flex-shrink-0">
