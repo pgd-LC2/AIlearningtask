@@ -112,7 +112,7 @@ export function useDraft(taskId: string | undefined) {
                 localStorage.removeItem(key);
               }
             }
-          } catch (error) {
+          } catch {
             localStorage.removeItem(key);
           }
         }
