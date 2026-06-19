@@ -1,5 +1,3 @@
-import { supabase } from './supabase';
-
 export interface TextContent {
   type: 'text';
   text: string;
@@ -63,24 +61,28 @@ export interface VolcengineResponse {
   object?: string;
 }
 
+const VOLCENGINE_API = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+const API_KEY = import.meta.env.VITE_VOLCENGINE_API_KEY as string;
+
 export async function callVolcengine(request: VolcengineRequest): Promise<VolcengineResponse> {
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (!session) {
-    throw new Error('User not authenticated');
-  }
-
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/volcengine-ai`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(request),
-    }
-  );
+  const response = await fetch(VOLCENGINE_API, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: request.model || 'kimi-k2-thinking-251104',
+      messages: request.messages,
+      temperature: request.temperature ?? 0.7,
+      max_tokens: request.max_tokens ?? 16000,
+      stream: false,
+      ...(request.top_p !== undefined && { top_p: request.top_p }),
+      ...(request.frequency_penalty !== undefined && { frequency_penalty: request.frequency_penalty }),
+      ...(request.presence_penalty !== undefined && { presence_penalty: request.presence_penalty }),
+      ...(request.thinking !== undefined && { thinking: request.thinking }),
+    }),
+  });
 
   if (!response.ok) {
     const error = await response.json();
@@ -96,25 +98,25 @@ export async function callVolcengineStream(
   onComplete: () => void,
   onError: (error: Error) => void
 ): Promise<void> {
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (!session) {
-    onError(new Error('User not authenticated'));
-    return;
-  }
-
   try {
-    const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/volcengine-ai`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ ...request, stream: true }),
-      }
-    );
+    const response = await fetch(VOLCENGINE_API, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: request.model || 'kimi-k2-thinking-251104',
+        messages: request.messages,
+        temperature: request.temperature ?? 0.7,
+        max_tokens: request.max_tokens ?? 16000,
+        stream: true,
+        ...(request.top_p !== undefined && { top_p: request.top_p }),
+        ...(request.frequency_penalty !== undefined && { frequency_penalty: request.frequency_penalty }),
+        ...(request.presence_penalty !== undefined && { presence_penalty: request.presence_penalty }),
+        ...(request.thinking !== undefined && { thinking: request.thinking }),
+      }),
+    });
 
     if (!response.ok) {
       const error = await response.json();
