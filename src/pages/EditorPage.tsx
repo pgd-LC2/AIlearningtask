@@ -1,22 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { LessonComponent } from '../types';
-import { Save, Eye, Download, History } from 'lucide-react';
+import { Save, Eye, Download } from 'lucide-react';
 import { generateStudentHTML } from '../utils/htmlGenerator';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { useDraft } from '../hooks/useDraft';
 import PageHeader from '../components/layout/PageHeader';
 import ComponentLibrary from '../components/editor/ComponentLibrary';
 import Canvas from '../components/editor/Canvas';
-import TeacherControlPanel from '../components/editor/TeacherControlPanel';
 import Button from '../components/ui/Button';
 
 export default function EditorPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [title, setTitle] = useState('未命名学习单');
   const [components, setComponents] = useState<LessonComponent[]>([]);
   const [saving, setSaving] = useState(false);
@@ -42,7 +40,7 @@ export default function EditorPage() {
     if (!error && data) {
       const dbTitle = data.title;
       const dbComponents = Array.isArray(data.content_json) ? data.content_json : [];
-      const dbUpdatedAt = new Date(data.updated_at).getTime();
+      const dbUpdatedAt = new Date(data.updated_at as string).getTime();
 
       const draft = loadDraft();
       if (draft && draft.timestamp > dbUpdatedAt) {
@@ -50,20 +48,16 @@ export default function EditorPage() {
         setComponents(draft.components);
         lastSavedDataRef.current = { title: draft.title, components: draft.components };
       } else {
-        setTitle(dbTitle);
-        setComponents(dbComponents);
-        if (draft) {
-          clearDraft();
-        }
-        lastSavedDataRef.current = { title: dbTitle, components: dbComponents };
+        setTitle(dbTitle as string);
+        setComponents(dbComponents as LessonComponent[]);
+        if (draft) clearDraft();
+        lastSavedDataRef.current = { title: dbTitle as string, components: dbComponents as LessonComponent[] };
       }
     }
   }, [id, user, loadDraft, clearDraft]);
 
   useEffect(() => {
-    if (id) {
-      loadTask();
-    }
+    if (id) loadTask();
   }, [id, loadTask]);
 
   const saveTask = useCallback(async () => {
@@ -85,16 +79,6 @@ export default function EditorPage() {
       setHasUnsavedChanges(false);
       lastSavedDataRef.current = { title, components };
       clearDraft();
-
-      await supabase
-        .from('lesson_task_versions')
-        .insert({
-          task_id: id,
-          user_id: user.id,
-          title,
-          content_json: components,
-          change_description: '自动保存',
-        });
     }
     setSaving(false);
   }, [id, user, title, components, clearDraft]);
@@ -110,7 +94,6 @@ export default function EditorPage() {
       initialLoadRef.current = false;
       return;
     }
-
     saveDraft(title, components);
     setHasUnsavedChanges(true);
   }, [title, components, saveDraft]);
@@ -186,19 +169,10 @@ export default function EditorPage() {
 
   const handleGenerateHTML = async () => {
     if (!id) return;
-
     setGenerating(true);
     try {
       await saveTask();
-
-      const html = generateStudentHTML(
-        title,
-        components,
-        id,
-        import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
-      );
-
+      const html = generateStudentHTML(title, components, id);
       const blob = new Blob([html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -218,24 +192,10 @@ export default function EditorPage() {
 
   const handlePreview = () => {
     if (!id) return;
-
-    const html = generateStudentHTML(
-      title,
-      components,
-      id,
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY
-    );
-
+    const html = generateStudentHTML(title, components, id);
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     window.open(url, '_blank');
-  };
-
-  const handleViewHistory = () => {
-    if (id) {
-      navigate(`/editor/${id}/history`);
-    }
   };
 
   const actions = (
@@ -243,10 +203,6 @@ export default function EditorPage() {
       <div className="text-xs text-gray-600">
         {saving ? '保存中...' : lastSaved ? `已保存 ${lastSaved.toLocaleTimeString()}` : ''}
       </div>
-      <Button onClick={handleViewHistory} variant="ghost">
-        <History className="w-4 h-4" />
-        历史版本
-      </Button>
       <Button onClick={saveTask} disabled={saving} variant="ghost">
         <Save className="w-4 h-4" />
         {saving ? '保存中...' : '保存'}
@@ -290,8 +246,6 @@ export default function EditorPage() {
           </div>
         </div>
       </div>
-
-      {id && <TeacherControlPanel taskId={id} components={components} />}
     </div>
   );
 }

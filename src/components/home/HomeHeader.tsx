@@ -1,8 +1,5 @@
-import { BookOpen, LogOut, Plus, Trash2, Settings, FolderPlus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { BookOpen, Plus, Trash2, FolderPlus } from 'lucide-react';
 import Button from '../ui/Button';
-import IconButton from '../ui/IconButton';
 
 interface HomeHeaderProps {
   onCreateTask: () => void;
@@ -13,9 +10,6 @@ interface HomeHeaderProps {
 }
 
 export default function HomeHeader({ onCreateTask, onCreateFolder, onDeleteSelected, selectedCount, deleting }: HomeHeaderProps) {
-  const { signOut, profile } = useAuth();
-  const navigate = useNavigate();
-
   return (
     <header className="bg-gradient-to-r from-blue-500 to-purple-600 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -49,14 +43,6 @@ export default function HomeHeader({ onCreateTask, onCreateFolder, onDeleteSelec
               <Plus className="w-4 h-4" />
               新建学习单
             </Button>
-            {profile?.is_admin && (
-              <IconButton onClick={() => navigate('/admin')} title="管理激活码" className="bg-white/20 hover:bg-white/30 text-white">
-                <Settings className="w-5 h-5" />
-              </IconButton>
-            )}
-            <IconButton onClick={signOut} title="退出登录" className="bg-white/20 hover:bg-white/30 text-white">
-              <LogOut className="w-5 h-5" />
-            </IconButton>
           </div>
         </div>
       </div>

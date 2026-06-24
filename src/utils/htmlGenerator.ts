@@ -1,6 +1,6 @@
 import { LessonComponent } from '../types';
 
-export function generateStudentHTML(title: string, components: LessonComponent[], taskId: string, supabaseUrl: string, supabaseAnonKey: string): string {
+export function generateStudentHTML(title: string, components: LessonComponent[], taskId: string, supabaseUrl?: string, supabaseAnonKey?: string): string {
   const questionComponents = components.filter(comp =>
     ['single-choice', 'multiple-choice', 'fill-blank', 'question-answer', 'code-editor'].includes(comp.type)
   );
@@ -721,8 +721,8 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
   </div>
 
   <script>
-    const SUPABASE_URL = '${supabaseUrl}';
-    const SUPABASE_ANON_KEY = '${supabaseAnonKey}';
+    const SUPABASE_URL = '${supabaseUrl || ''}';
+    const SUPABASE_ANON_KEY = '${supabaseAnonKey || ''}';
     const TASK_ID = '${taskId}';
     const HAS_PAGINATION = ${hasPagination};
     const TOTAL_PAGES = ${pages.length};

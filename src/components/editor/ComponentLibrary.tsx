@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import {
-  Heading, Type, Columns, List, CheckSquare,
-  TextCursorInput, MessageSquare, Gift, Code, ChevronDown, ChevronRight,
-  Image, Video, Minus, MessageCircle, Link, Wand2, FileCode
-} from 'lucide-react';
+import { Heading, Type, Columns2 as Columns, List, CheckSquare, TextCursorInput, MessageSquare, Gift, Code, ChevronDown, ChevronRight, Image, Video, Minus, Link, FileCode } from 'lucide-react';
 import { LessonComponent } from '../../types';
 
 interface ComponentLibraryProps {
@@ -11,7 +7,7 @@ interface ComponentLibraryProps {
 }
 
 export default function ComponentLibrary({ onAddComponent }: ComponentLibraryProps) {
-  const [expandedSections, setExpandedSections] = useState<string[]>(['basic', 'media', 'questions', 'advanced', 'ai']);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['basic', 'media', 'questions', 'advanced']);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev =>
@@ -19,90 +15,43 @@ export default function ComponentLibrary({ onAddComponent }: ComponentLibraryPro
     );
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const createDefaultComponent = (type: string): LessonComponent => {
     const id = `${type}-${Date.now()}`;
 
     switch (type) {
       case 'title':
-        return { id, type, config: { text: '', size: 'large', align: 'left' } };
+        return { id, type: 'title', config: { text: '', size: 'large', align: 'left' } };
       case 'paragraph':
-        return { id, type, config: { text: '', size: 'normal' } };
+        return { id, type: 'paragraph', config: { text: '', size: 'normal' } };
       case 'two-column':
-        return { id, type, config: { leftContent: '', rightContent: '' } };
+        return { id, type: 'two-column', config: { leftContent: '', rightContent: '' } };
       case 'three-column':
-        return { id, type, config: { content1: '', content2: '', content3: '' } };
+        return { id, type: 'three-column', config: { content1: '', content2: '', content3: '' } };
       case 'single-choice':
-        return { id, type, config: { question: '', options: ['', ''], correctAnswer: 0, explanation: '' } };
+        return { id, type: 'single-choice', config: { question: '', options: ['', ''], correctAnswer: 0, explanation: '' } };
       case 'multiple-choice':
-        return { id, type, config: { question: '', options: ['', ''], correctAnswers: [], explanation: '' } };
+        return { id, type: 'multiple-choice', config: { question: '', options: ['', ''], correctAnswers: [], explanation: '' } };
       case 'fill-blank':
-        return { id, type, config: { text: '', correctAnswers: [] } };
+        return { id, type: 'fill-blank', config: { text: '', correctAnswers: [] } };
       case 'question-answer':
-        return { id, type, config: { question: '', referenceAnswer: '' } };
+        return { id, type: 'question-answer', config: { question: '', referenceAnswer: '' } };
       case 'lucky-box':
-        return { id, type, config: { title: '', options: ['', ''], mode: 'random' } };
+        return { id, type: 'lucky-box', config: { title: '', options: ['', ''], mode: 'random' } };
       case 'embed-html':
-        return { id, type, config: { htmlCode: '' } };
+        return { id, type: 'embed-html', config: { htmlCode: '' } };
       case 'image':
-        return { id, type, config: { url: '', alt: '', align: 'center', width: 100 } };
+        return { id, type: 'image', config: { url: '', alt: '', align: 'center', width: 100 } };
       case 'video':
-        return { id, type, config: { platform: 'bilibili', embedCode: '', height: 400 } };
+        return { id, type: 'video', config: { platform: 'bilibili', embedCode: '', height: 400 } };
       case 'page-break':
-        return { id, type, config: { label: '' } };
-      case 'ai-chatbox':
-        return {
-          id,
-          type,
-          config: {
-            title: 'AI 对话',
-            systemPrompt: '你是一个专门为学生设计的AI助手。你的回答应该：\n1. 使用适合学生理解的简单、清晰的语言\n2. 提供教育性的内容，避免不适当或危险的信息\n3. 鼓励学习和批判性思维，而不是直接给出作业答案\n4. 在回答技术问题时，提供基础性的解释和学习资源\n5. 保持友好、耐心和支持性的态度\n6. 如果问题超出学生学习范围或不适当，礼貌地引导到合适的话题\n\n请始终记住你的受众是学生，调整你的回答方式以最好地支持他们的学习。',
-            model: 'kimi-k2-thinking-251104',
-            placeholder: '输入消息...'
-          }
-        };
+        return { id, type: 'page-break', config: { label: '' } };
       case 'hyperlink':
-        return { id, type, config: { text: '点击这里', url: '', openInNewTab: true } };
-      case 'ai-html-generator':
-        return {
-          id,
-          type,
-          config: {
-            title: 'AI HTML 游戏生成器',
-            description: '填写下面的参数，让 AI 帮你生成自定义的 HTML 游戏',
-            promptTemplate: '请创建一个完整的、可交互的 HTML 游戏。要求：\n\n游戏类型：{{gameType}}\n题目来源：{{questionSource}}\n游戏规则：每次随机从题库中抽取一道题目\n\n请生成包含完整 HTML、CSS 和 JavaScript 的代码，确保游戏可以独立运行。代码必须放在 ```html 代码块中。使用现代、美观的设计，包含适当的动画效果。',
-            parameters: [
-              {
-                id: 'param-1',
-                label: '游戏类型',
-                name: 'gameType',
-                type: 'select',
-                options: ['选择题', '填空题', '配对游戏', '记忆翻牌'],
-                required: true
-              },
-              {
-                id: 'param-2',
-                label: '题目来源',
-                name: 'questionSource',
-                type: 'text',
-                placeholder: '例如：语文课本第一单元',
-                required: true
-              },
-              {
-                id: 'param-3',
-                label: '主题色',
-                name: 'themeColor',
-                type: 'color',
-                required: false
-              }
-            ],
-            model: 'doubao-seed-code-preview-251028',
-            buttonText: '生成 HTML 游戏'
-          }
-        };
+        return { id, type: 'hyperlink', config: { text: '点击这里', url: '', openInNewTab: true } };
       case 'code-editor':
         return {
           id,
-          type,
+          type: 'code-editor' as const,
           config: {
             sections: [
               { id: 'section-1', title: '题目', color: '#3b82f6' },
@@ -114,7 +63,7 @@ export default function ComponentLibrary({ onAddComponent }: ComponentLibraryPro
           }
         };
       default:
-        return { id, type, config: {} };
+        return { id, type: type as any, config: {} } as LessonComponent;
     }
   };
 
@@ -167,15 +116,6 @@ export default function ComponentLibrary({ onAddComponent }: ComponentLibraryPro
         { type: 'embed-html', icon: Code, label: '嵌入HTML' },
       ],
     },
-    {
-      id: 'ai',
-      title: 'AI 组件',
-      color: 'cyan',
-      components: [
-        { type: 'ai-chatbox', icon: MessageCircle, label: 'AI 聊天框' },
-        { type: 'ai-html-generator', icon: Wand2, label: 'AI HTML 生成器' },
-      ],
-    },
   ];
 
   const colorStyles: Record<string, { header: string; icon: string; button: string }> = {
@@ -198,11 +138,6 @@ export default function ComponentLibrary({ onAddComponent }: ComponentLibraryPro
       header: 'bg-gradient-to-r from-orange-500 to-orange-600',
       icon: 'text-orange-500',
       button: 'hover:bg-gradient-to-r hover:from-orange-50 hover:to-orange-100 hover:border-orange-200'
-    },
-    cyan: {
-      header: 'bg-gradient-to-r from-cyan-500 to-teal-500',
-      icon: 'text-cyan-500',
-      button: 'hover:bg-gradient-to-r hover:from-cyan-50 hover:to-teal-50 hover:border-cyan-200'
     }
   };
 

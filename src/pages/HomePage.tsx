@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
-import { LessonTask, Folder, LessonControl } from '../types';
+import { LessonTask, Folder } from '../types';
 import { FileText, FolderOpen } from 'lucide-react';
 import { generateStudentHTML } from '../utils/htmlGenerator';
 import HomeHeader from '../components/home/HomeHeader';
@@ -21,12 +21,11 @@ export default function HomePage() {
   const [deleting, setDeleting] = useState(false);
   const [isDraggingOverMain, setIsDraggingOverMain] = useState(false);
   const [movingTaskId, setMovingTaskId] = useState<string | null>(null);
-  const [controlStates, setControlStates] = useState<Map<string, boolean>>(new Map());
 
   const loadData = useCallback(async () => {
     if (!user) return;
 
-    const [tasksResult, foldersResult, controlsResult] = await Promise.all([
+    const [tasksResult, foldersResult] = await Promise.all([
       supabase
         .from('lesson_tasks')
         .select('*')
@@ -37,25 +36,14 @@ export default function HomePage() {
         .select('*')
         .eq('user_id', user.id)
         .order('name', { ascending: true }),
-      supabase
-        .from('lesson_controls')
-        .select('*')
     ]);
 
     if (!tasksResult.error && tasksResult.data) {
-      setTasks(tasksResult.data);
+      setTasks(tasksResult.data as LessonTask[]);
     }
 
     if (!foldersResult.error && foldersResult.data) {
-      setFolders(foldersResult.data);
-    }
-
-    if (!controlsResult.error && controlsResult.data) {
-      const statesMap = new Map<string, boolean>();
-      controlsResult.data.forEach((control: LessonControl) => {
-        statesMap.set(control.task_id, control.control_enabled);
-      });
-      setControlStates(statesMap);
+      setFolders(foldersResult.data as Folder[]);
     }
 
     setLoading(false);
@@ -213,15 +201,7 @@ export default function HomePage() {
 
   const handleDownloadHTML = (task: LessonTask) => {
     const components = Array.isArray(task.content_json) ? task.content_json : [];
-    const controlEnabled = controlStates.get(task.id) || false;
-    const html = generateStudentHTML(
-      task.title,
-      components,
-      task.id,
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY,
-      controlEnabled
-    );
+    const html = generateStudentHTML(task.title, components, task.id);
 
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -315,7 +295,6 @@ export default function HomePage() {
                             onDownload={() => handleDownloadHTML(task)}
                             onDragStart={() => {}}
                             isMoving={movingTaskId === task.id}
-                            controlEnabled={controlStates.get(task.id) || false}
                           />
                         </div>
                       ))}
@@ -331,7 +310,6 @@ export default function HomePage() {
                 selected={selectedTasks.has(task.id)}
                 onToggleSelect={() => toggleTaskSelection(task.id)}
                 onDownload={() => handleDownloadHTML(task)}
-                controlEnabled={controlStates.get(task.id) || false}
                 onDragStart={() => {}}
                 isMoving={movingTaskId === task.id}
               />

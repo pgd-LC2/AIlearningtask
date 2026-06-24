@@ -1,10 +1,9 @@
-import { Edit, Download, Users, CheckSquare, Radio } from 'lucide-react';
+import { CreditCard as Edit, Download, CheckSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { LessonTask } from '../../types';
 import { formatRelativeTime } from '../../utils/format';
 import Card from '../ui/Card';
-import Badge from '../ui/Badge';
 import IconButton from '../ui/IconButton';
 
 interface TaskCardProps {
@@ -14,10 +13,9 @@ interface TaskCardProps {
   onDownload: () => void;
   onDragStart: () => void;
   isMoving?: boolean;
-  controlEnabled?: boolean;
 }
 
-export default function TaskCard({ task, selected, onToggleSelect, onDownload, onDragStart, isMoving = false, controlEnabled = false }: TaskCardProps) {
+export default function TaskCard({ task, selected, onToggleSelect, onDownload, onDragStart, isMoving = false }: TaskCardProps) {
   const navigate = useNavigate();
   const componentCount = Array.isArray(task.content_json) ? task.content_json.length : 0;
   const [isDragging, setIsDragging] = useState(false);
@@ -67,20 +65,12 @@ export default function TaskCard({ task, selected, onToggleSelect, onDownload, o
             />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h3
-                className="text-base font-semibold text-gray-900 cursor-pointer hover:text-gray-700"
-                onClick={() => navigate(`/editor/${task.id}`)}
-              >
-                {task.title}
-              </h3>
-              {controlEnabled && (
-                <Badge variant="success" className="flex items-center gap-1 text-xs">
-                  <Radio className="w-3 h-3" />
-                  流程控制
-                </Badge>
-              )}
-            </div>
+            <h3
+              className="text-base font-semibold text-gray-900 cursor-pointer hover:text-gray-700 mb-1"
+              onClick={() => navigate(`/editor/${task.id}`)}
+            >
+              {task.title}
+            </h3>
             <div className="flex items-center gap-3 text-sm text-gray-600">
               <span className="flex items-center gap-1">
                 <CheckSquare className="w-3.5 h-3.5" />
@@ -109,15 +99,6 @@ export default function TaskCard({ task, selected, onToggleSelect, onDownload, o
             title="下载学习单"
           >
             <Download className="w-4 h-4" />
-          </IconButton>
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/submissions/${task.id}`);
-            }}
-            title="查看提交"
-          >
-            <Users className="w-4 h-4" />
           </IconButton>
         </div>
       </div>

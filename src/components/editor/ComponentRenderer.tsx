@@ -3,7 +3,17 @@ import DOMPurify from 'dompurify';
 import ReactMarkdown from 'react-markdown';
 import { Minus, Send, Loader2, Brain, RefreshCw, Play, Pause, Maximize2, X, ExternalLink, Plus, Image as ImageIcon, Link as LinkIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { LessonComponent } from '../../types';
-import { callVolcengineStream } from '../../lib/volcengine';
+
+// AI functionality removed - stub for legacy component support
+async function callVolcengineStream(
+  _request: unknown,
+  _onChunk: (text: string, isThinking?: boolean) => void,
+  onComplete: () => void,
+  onError: (error: Error) => void
+): Promise<void> {
+  onError(new Error('AI 功能已禁用'));
+  onComplete();
+}
 
 interface ComponentRendererProps {
   component: LessonComponent;
