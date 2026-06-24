@@ -83,10 +83,18 @@ class QueryBuilder {
   private _mode: 'many' | 'single' | 'maybe' = 'many';
   private _insertPayload: unknown;
   private _updatePayload: Record<string, unknown> = {};
+  private _returnData = false;
 
   constructor(table: string) { this._table = table; }
 
-  select(_fields = '*') { this._op = 'select'; return this; }
+  select(_fields = '*') {
+    if (this._op === 'insert' || this._op === 'update') {
+      this._returnData = true;
+    } else {
+      this._op = 'select';
+    }
+    return this;
+  }
   eq(field: string, value: unknown) { this._filters.push({ field, op: 'eq', value }); return this; }
   neq(field: string, value: unknown) { this._filters.push({ field, op: 'neq', value }); return this; }
   in(field: string, values: unknown[]) { this._filters.push({ field, op: 'in', value: values }); return this; }
@@ -152,6 +160,9 @@ class QueryBuilder {
           ...p,
         }));
         setTable(this._table, [...rows, ...inserted]);
+        if (this._mode === 'single' || this._mode === 'maybe') {
+          return { data: inserted[0], error: null };
+        }
         return { data: inserted.length === 1 ? inserted[0] : inserted, error: null };
       }
 
