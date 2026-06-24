@@ -455,65 +455,27 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${escapeHtml(title)}</title>
   <script>
-    // 多CDN备用加载方案
+    // Marked library for markdown rendering (AI chatbox)
     (function() {
-      const cdnSources = {
-        supabase: [
-          'https://unpkg.com/@supabase/supabase-js@2',
-          'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-          'https://cdn.skypack.dev/@supabase/supabase-js@2'
-        ],
-        marked: [
-          'https://unpkg.com/marked@11/marked.min.js',
-          'https://cdn.jsdelivr.net/npm/marked@11/marked.min.js',
-          'https://cdn.skypack.dev/marked@11'
-        ]
-      };
+      const markedUrls = [
+        'https://unpkg.com/marked@11/marked.min.js',
+        'https://cdn.jsdelivr.net/npm/marked@11/marked.min.js'
+      ];
 
-      function loadScriptWithFallback(name, urls, index = 0) {
+      function loadScript(urls, index = 0) {
         return new Promise((resolve, reject) => {
-          if (index >= urls.length) {
-            reject(new Error(\`所有CDN加载失败: \${name}\`));
-            return;
-          }
-
-          const script = document.createElement('script');
-          script.src = urls[index];
-          script.timeout = 10000;
-
-          const timer = setTimeout(() => {
-            script.remove();
-            console.warn(\`CDN超时，尝试下一个: \${urls[index]}\`);
-            loadScriptWithFallback(name, urls, index + 1).then(resolve).catch(reject);
-          }, 10000);
-
-          script.onload = () => {
-            clearTimeout(timer);
-            console.log(\`成功加载 \${name} from \${urls[index]}\`);
-            resolve();
-          };
-
-          script.onerror = () => {
-            clearTimeout(timer);
-            script.remove();
-            console.warn(\`CDN失败，尝试下一个: \${urls[index]}\`);
-            loadScriptWithFallback(name, urls, index + 1).then(resolve).catch(reject);
-          };
-
-          document.head.appendChild(script);
+          if (index >= urls.length) { resolve(); return; }
+          const s = document.createElement('script');
+          s.src = urls[index];
+          s.onload = resolve;
+          s.onerror = () => loadScript(urls, index + 1).then(resolve).catch(reject);
+          document.head.appendChild(s);
         });
       }
 
       window.initializeLibraries = async function() {
-        try {
-          await loadScriptWithFallback('Supabase', cdnSources.supabase);
-          await loadScriptWithFallback('Marked', cdnSources.marked);
-          return true;
-        } catch (error) {
-          console.error('库加载失败:', error);
-          alert('网络资源加载失败，请检查网络连接后刷新页面。\\n\\n如果问题持续，请联系老师。');
-          return false;
-        }
+        try { await loadScript(markedUrls); } catch(e) { console.warn('Marked load failed'); }
+        return true;
       };
     })();
   </script>
@@ -721,44 +683,10 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
   </div>
 
   <script>
-    const SUPABASE_URL = '${supabaseUrl || ''}';
-    const SUPABASE_ANON_KEY = '${supabaseAnonKey || ''}';
     const TASK_ID = '${taskId}';
     const HAS_PAGINATION = ${hasPagination};
     const TOTAL_PAGES = ${pages.length};
     const STORAGE_KEY = 'student_answers_' + TASK_ID;
-    const CHAT_STORAGE_KEY = 'chat_history_' + TASK_ID;
-
-    let supabaseClient;
-
-    async function initializeApp() {
-      console.log('开始初始化应用...');
-
-      const loadSuccess = await window.initializeLibraries();
-      if (!loadSuccess) {
-        document.body.innerHTML = '<div style="text-align:center;padding:40px;"><h2 style="color:#ef4444;">加载失败</h2><p>网络资源加载失败，请检查网络连接后刷新页面。</p></div>';
-        return;
-      }
-
-      console.log('Supabase配置:', {
-        url: SUPABASE_URL,
-        taskId: TASK_ID,
-        hasAnonKey: !!SUPABASE_ANON_KEY,
-        anonKeyLength: SUPABASE_ANON_KEY?.length
-      });
-
-      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false
-        }
-      });
-
-      console.log('应用初始化完成');
-      initializeContent();
-    }
-
-    function initializeContent() {
 
     window.luckyBoxData = window.luckyBoxData || {};
     let currentPage = 0;
@@ -805,9 +733,14 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           data.answers[questionId] = { type: 'textarea', value: textarea.value };
         });
 
+        document.querySelectorAll('textarea.code-editor-textarea').forEach(textarea => {
+          const questionId = textarea.id.replace('code_', '');
+          data.answers[questionId] = { type: 'code', value: textarea.value };
+        });
+
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
       } catch (e) {
-        console.error('保存到localStorage失败:', e);
+        console.error('保存失败:', e);
       }
     }
 
@@ -828,7 +761,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           if (nameInput) nameInput.value = data.studentName;
         }
 
-        Object.keys(data.answers).forEach(questionId => {
+        Object.keys(data.answers || {}).forEach(questionId => {
           const answer = data.answers[questionId];
 
           if (answer.type === 'radio') {
@@ -840,144 +773,24 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
               if (checkbox) checkbox.checked = true;
             });
           } else if (answer.type === 'fillblank') {
-            answer.value.forEach((val, index) => {
+            (answer.value || []).forEach((val, index) => {
               const input = document.getElementById('q_' + questionId + '_' + index);
-              if (input) input.value = val;
+              if (input) input.value = val || '';
             });
           } else if (answer.type === 'textarea') {
             const textarea = document.getElementById('q_' + questionId);
-            if (textarea) textarea.value = answer.value;
+            if (textarea) textarea.value = answer.value || '';
+          } else if (answer.type === 'code') {
+            const textarea = document.getElementById('code_' + questionId);
+            if (textarea) textarea.value = answer.value || '';
           }
         });
-
-        console.log('已从本地缓存恢复答案');
       } catch (e) {
-        console.error('从localStorage加载失败:', e);
+        console.error('恢复失败:', e);
       }
     }
-
-    function saveChatHistory() {
-      try {
-        const chatData = {
-          history: window.chatHistory || {},
-          attachments: window.attachmentData || {},
-          timestamp: Date.now()
-        };
-        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatData));
-      } catch (e) {
-        console.error('保存聊天记录失败:', e);
-      }
-    }
-
-    function loadChatHistory() {
-      try {
-        const savedChat = localStorage.getItem(CHAT_STORAGE_KEY);
-        if (!savedChat) return;
-
-        const chatData = JSON.parse(savedChat);
-        window.chatHistory = chatData.history || {};
-        window.attachmentData = chatData.attachments || {};
-
-        Object.keys(window.chatHistory).forEach(chatboxId => {
-          const messagesDiv = document.getElementById('messages_' + chatboxId);
-          if (!messagesDiv) return;
-
-          const emptyDiv = messagesDiv.querySelector('.chatbox-empty');
-          if (emptyDiv) emptyDiv.remove();
-
-          window.chatHistory[chatboxId].forEach((msg, msgIndex) => {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'chat-message ' + msg.role;
-            const textContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-
-            if (msg.role === 'reasoning') {
-              msgDiv.style.cssText = 'background: #fef3c7; border: 1px solid #fbbf24; color: #92400e; max-width: 85%;';
-
-              const toggleDiv = document.createElement('div');
-              toggleDiv.className = 'reasoning-toggle';
-              toggleDiv.innerHTML = '<div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 12px; color: #b45309;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>思维链</div><svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>';
-
-              const contentDiv = document.createElement('div');
-              contentDiv.className = 'reasoning-content';
-              contentDiv.innerHTML = marked.parse(msg.content);
-
-              toggleDiv.onclick = function() {
-                if (contentDiv.classList.contains('collapsed')) {
-                  contentDiv.classList.remove('collapsed');
-                  toggleDiv.querySelector('.chevron-icon').innerHTML = '<polyline points="18 15 12 9 6 15"/>';
-                } else {
-                  contentDiv.classList.add('collapsed');
-                  toggleDiv.querySelector('.chevron-icon').innerHTML = '<polyline points="6 9 12 15 18 9"/>';
-                }
-              };
-
-              msgDiv.appendChild(toggleDiv);
-              msgDiv.appendChild(contentDiv);
-            } else if (msg.role === 'assistant') {
-              msgDiv.innerHTML = marked.parse(msg.content);
-            } else {
-              msgDiv.textContent = textContent;
-            }
-
-            if (msg.role !== 'reasoning') {
-              const copyBtn = document.createElement('button');
-              copyBtn.className = 'chat-message-copy-btn';
-              copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-              copyBtn.onclick = function(e) {
-                e.stopPropagation();
-                window.copyChatMessage(textContent);
-              };
-              msgDiv.appendChild(copyBtn);
-            }
-
-            messagesDiv.appendChild(msgDiv);
-          });
-
-          messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        });
-
-        console.log('已从本地缓存恢复聊天记录');
-      } catch (e) {
-        console.error('加载聊天记录失败:', e);
-      }
-    }
-
-    window.addEventListener('load', function() {
-      loadFromLocalStorage();
-      loadChatHistory();
-    });
-
-    document.addEventListener('input', function(e) {
-      if (e.target.matches('input, textarea, select')) {
-        saveToLocalStorage();
-      }
-    });
-
-    document.addEventListener('change', function(e) {
-      if (e.target.matches('input[type="radio"], input[type="checkbox"]')) {
-        saveToLocalStorage();
-      }
-    });
-
-    document.addEventListener('click', function(e) {
-      const menus = document.querySelectorAll('.attachment-menu');
-      menus.forEach(menu => {
-        if (menu.style.display === 'block') {
-          const chatboxId = menu.id.replace('attachMenu_', '');
-          const btn = document.getElementById('attachBtn_' + chatboxId);
-          if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
-            menu.style.display = 'none';
-          }
-        }
-      });
-    });
 
     function changePage(direction) {
-      if (controlEnabled) {
-        console.log('[流程控制] 教师控制模式下无法手动翻页');
-        return;
-      }
-
       const allPages = document.querySelectorAll('.page');
       const newPage = currentPage + direction;
 
@@ -994,17 +807,19 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
       }
     }
 
+    function updateNavigationButtons() {
+      if (!HAS_PAGINATION) return;
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      if (prevBtn) prevBtn.disabled = currentPage === 0;
+      if (nextBtn) nextBtn.disabled = currentPage === TOTAL_PAGES - 1;
+    }
+
     function updateSubmitSection() {
       if (!HAS_PAGINATION) return;
-
       const submitSection = document.getElementById('submitSection');
       if (!submitSection) return;
-
-      if (currentPage === TOTAL_PAGES - 1) {
-        submitSection.style.display = 'block';
-      } else {
-        submitSection.style.display = 'none';
-      }
+      submitSection.style.display = (currentPage === TOTAL_PAGES - 1) ? 'block' : 'none';
     }
 
     function drawLuckyBox(id) {
@@ -1047,7 +862,7 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
           }
 
           setTimeout(() => {
-            resultDiv.textContent = '🎉 ' + finalResult + ' 🎉';
+            resultDiv.textContent = finalResult;
             resultDiv.classList.add('show');
             btnDiv.classList.remove('spinning');
           }, 100);
@@ -1055,1094 +870,39 @@ export function generateStudentHTML(title: string, components: LessonComponent[]
       }, 80);
     }
 
-    window.chatHistory = {};
-    window.attachmentData = {};
-    window.fullscreenOverlays = {};
-
-    window.clearChatHistory = function(chatboxId) {
-      if (!confirm('确定要清空所有对话记录吗？此操作不可恢复。')) {
-        return;
-      }
-
-      window.chatHistory[chatboxId] = [];
-      window.attachmentData[chatboxId] = [];
-
-      const messagesDiv = document.getElementById('messages_' + chatboxId);
-      if (messagesDiv) {
-        messagesDiv.innerHTML = '<div class="chatbox-empty">开始与 AI 对话...</div>';
-      }
-
-      const overlay = window.fullscreenOverlays[chatboxId];
-      if (overlay) {
-        const overlayMessages = overlay.querySelector('#messages_' + chatboxId);
-        if (overlayMessages) {
-          overlayMessages.innerHTML = '<div class="chatbox-empty">开始与 AI 对话...</div>';
-        }
-      }
-
-      const attachmentsDiv = document.getElementById('attachments_' + chatboxId);
-      if (attachmentsDiv) {
-        attachmentsDiv.innerHTML = '';
-      }
-
-      saveChatHistory();
-    };
-
-    window.exportChatHistory = function(chatboxId) {
-      const history = window.chatHistory[chatboxId] || [];
-
-      if (history.length === 0) {
-        alert('暂无对话记录可导出');
-        return;
-      }
-
-      let content = '# AI 对话记录\\n\\n';
-      content += '导出时间: ' + new Date().toLocaleString('zh-CN') + '\\n\\n';
-      content += '---\\n\\n';
-
-      history.forEach((msg, index) => {
-        const role = msg.role === 'user' ? '👤 用户' : msg.role === 'reasoning' ? '🧠 思维链' : '🤖 AI助手';
-        const msgContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-        content += '## ' + role + '\\n\\n';
-        content += msgContent + '\\n\\n';
-        content += '---\\n\\n';
-      });
-
-      const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'chat_history_' + new Date().getTime() + '.md';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    };
-
-    window.copyChatMessage = function(text) {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(function() {
-          const tooltip = document.createElement('div');
-          tooltip.textContent = '已复制';
-          tooltip.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.8); color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; z-index: 10000; animation: fadeInScale 0.3s ease;';
-          document.body.appendChild(tooltip);
-          setTimeout(function() {
-            document.body.removeChild(tooltip);
-          }, 1500);
-        }).catch(function(err) {
-          console.error('复制失败:', err);
-          alert('复制失败');
-        });
-      } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = text;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        try {
-          document.execCommand('copy');
-          alert('已复制');
-        } catch (err) {
-          console.error('复制失败:', err);
-          alert('复制失败');
-        }
-        document.body.removeChild(textarea);
-      }
-    };
-
-    window.toggleChatFullscreen = function(chatboxId) {
-      let overlay = window.fullscreenOverlays[chatboxId];
-
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.className = 'chatbox-fullscreen-overlay';
-        overlay.id = 'fullscreen_' + chatboxId;
-
-        const chatbox = document.getElementById('chatbox_' + chatboxId);
-        const clonedChatbox = chatbox.cloneNode(true);
-
-        const header = clonedChatbox.querySelector('.chatbox-header');
-        const actionBtns = header.querySelectorAll('.chatbox-action-btn');
-
-        if (actionBtns.length >= 1) {
-          actionBtns[0].onclick = function() { window.clearChatHistory(chatboxId); };
-        }
-        if (actionBtns.length >= 2) {
-          actionBtns[1].onclick = function() { window.exportChatHistory(chatboxId); };
-        }
-        if (actionBtns.length >= 3) {
-          actionBtns[2].innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 3h3v3M6 3H3v3m15 12v3h3m-9 0H3v-3"/></svg>';
-          actionBtns[2].title = '退出全屏';
-          actionBtns[2].onclick = function() { window.toggleChatFullscreen(chatboxId); };
-        }
-
-        const attachBtn = clonedChatbox.querySelector('.attachment-btn');
-        attachBtn.onclick = function(e) {
-          e.preventDefault();
-          e.stopPropagation();
-          window.toggleAttachmentMenu(chatboxId);
-        };
-
-        const attachMenuBtns = clonedChatbox.querySelectorAll('.attachment-menu-item');
-        attachMenuBtns.forEach(function(btn) {
-          const originalOnclick = btn.getAttribute('onclick');
-          if (originalOnclick) {
-            btn.onclick = function() { eval(originalOnclick); };
-          }
-        });
-
-        const sendBtn = clonedChatbox.querySelector('.chatbox-send-btn');
-        sendBtn.onclick = function() { window.sendChatMessage(chatboxId); };
-
-        const inputField = clonedChatbox.querySelector('.chatbox-input');
-        inputField.onkeypress = function(e) {
-          if (e.key === 'Enter') {
-            window.sendChatMessage(chatboxId);
-          }
-        };
-
-        const fileInput = clonedChatbox.querySelector('#fileInput_' + chatboxId);
-        fileInput.onchange = function(event) {
-          window.handleFileUpload(chatboxId, event);
-        };
-
-        overlay.appendChild(clonedChatbox);
-        document.body.appendChild(overlay);
-        window.fullscreenOverlays[chatboxId] = overlay;
-
-        const originalInput = document.getElementById('input_' + chatboxId);
-        const clonedInput = overlay.querySelector('#input_' + chatboxId);
-        clonedInput.dataset.model = originalInput.dataset.model;
-        clonedInput.dataset.systemprompt = originalInput.dataset.systemprompt;
-      }
-
-      if (overlay.classList.contains('active')) {
-        const originalChatbox = document.getElementById('chatbox_' + chatboxId);
-        const overlayMessages = overlay.querySelector('#messages_' + chatboxId);
-        const originalMessages = originalChatbox.querySelector('#messages_' + chatboxId);
-        originalMessages.innerHTML = overlayMessages.innerHTML;
-
-        const overlayInput = overlay.querySelector('#input_' + chatboxId);
-        const originalInput = originalChatbox.querySelector('#input_' + chatboxId);
-        originalInput.value = overlayInput.value;
-
-        const overlayAttachments = overlay.querySelector('#attachments_' + chatboxId);
-        const originalAttachments = originalChatbox.querySelector('#attachments_' + chatboxId);
-        originalAttachments.innerHTML = overlayAttachments.innerHTML;
-
-        overlay.classList.remove('active');
-      } else {
-        const originalMessages = document.getElementById('messages_' + chatboxId);
-        const overlayMessages = overlay.querySelector('#messages_' + chatboxId);
-        overlayMessages.innerHTML = originalMessages.innerHTML;
-
-        const originalInput = document.getElementById('input_' + chatboxId);
-        const overlayInput = overlay.querySelector('#input_' + chatboxId);
-        overlayInput.value = originalInput.value;
-
-        const originalAttachments = document.getElementById('attachments_' + chatboxId);
-        const overlayAttachments = overlay.querySelector('#attachments_' + chatboxId);
-        overlayAttachments.innerHTML = originalAttachments.innerHTML;
-
-        overlay.classList.add('active');
-      }
-    };
-
-    window.toggleAttachmentMenu = function(chatboxId) {
-      const overlay = window.fullscreenOverlays[chatboxId];
-      let menu;
-
-      if (overlay && overlay.classList.contains('active')) {
-        menu = overlay.querySelector('#attachMenu_' + chatboxId);
-      } else {
-        menu = document.getElementById('attachMenu_' + chatboxId);
-      }
-
-      if (menu) {
-        const currentDisplay = window.getComputedStyle(menu).display;
-        menu.style.display = (currentDisplay === 'none' || !menu.style.display) ? 'block' : 'none';
-      }
-    };
-
-    window.triggerFileUpload = function(chatboxId, type) {
-      const overlay = window.fullscreenOverlays[chatboxId];
-      let fileInput;
-
-      if (overlay && overlay.classList.contains('active')) {
-        fileInput = overlay.querySelector('#fileInput_' + chatboxId);
-      } else {
-        fileInput = document.getElementById('fileInput_' + chatboxId);
-      }
-      fileInput.click();
-      window.toggleAttachmentMenu(chatboxId);
-    };
-
-    window.handleFileUpload = function(chatboxId, event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target.result;
-        if (file.type.startsWith('image/')) {
-          if (!window.attachmentData[chatboxId]) {
-            window.attachmentData[chatboxId] = [];
-          }
-          window.attachmentData[chatboxId].push({ type: 'image', name: file.name, content });
-          window.renderAttachments(chatboxId);
-          saveChatHistory();
-        }
-      };
-
-      if (file.type.startsWith('image/')) {
-        reader.readAsDataURL(file);
-      }
-    };
-
-    window.addLink = function(chatboxId) {
-      const url = prompt('请输入链接地址:');
-      if (url) {
-        if (!window.attachmentData[chatboxId]) {
-          window.attachmentData[chatboxId] = [];
-        }
-        window.attachmentData[chatboxId].push({ type: 'link', name: url, content: url });
-        window.renderAttachments(chatboxId);
-        saveChatHistory();
-      }
-      window.toggleAttachmentMenu(chatboxId);
-    };
-
-    window.removeAttachment = function(chatboxId, index) {
-      window.attachmentData[chatboxId].splice(index, 1);
-      window.renderAttachments(chatboxId);
-      saveChatHistory();
-    };
-
-    window.renderAttachments = function(chatboxId) {
-      const overlay = window.fullscreenOverlays[chatboxId];
-      let container;
-
-      if (overlay && overlay.classList.contains('active')) {
-        container = overlay.querySelector('#attachments_' + chatboxId);
-      } else {
-        container = document.getElementById('attachments_' + chatboxId);
-      }
-
-      const attachments = window.attachmentData[chatboxId] || [];
-
-      if (attachments.length === 0) {
-        if (container) container.innerHTML = '';
-        return;
-      }
-
-      let html = '';
-      attachments.forEach((att, index) => {
-        let icon = '';
-        if (att.type === 'image') {
-          icon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
-        } else if (att.type === 'link') {
-          icon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
-        }
-
-        html += '<div class="attachment-tag">' + icon + '<span style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">' + att.name + '</span><span class="remove-btn" onclick="window.removeAttachment(\\'' + chatboxId + '\\', ' + index + ')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></div>';
-      });
-
-      container.innerHTML = html;
-    };
-
-    window.sendChatMessage = async function(chatboxId) {
-      const overlay = window.fullscreenOverlays[chatboxId];
-      let input, messagesDiv;
-
-      if (overlay && overlay.classList.contains('active')) {
-        input = overlay.querySelector('#input_' + chatboxId);
-        messagesDiv = overlay.querySelector('#messages_' + chatboxId);
-      } else {
-        input = document.getElementById('input_' + chatboxId);
-        messagesDiv = document.getElementById('messages_' + chatboxId);
-      }
-
-      const sendBtn = event.currentTarget;
-      let message = input.value.trim();
-      const attachments = window.attachmentData[chatboxId] || [];
-
-      if (!message && attachments.length === 0) return;
-
-      const contentParts = [];
-
-      if (message) {
-        contentParts.push({ type: 'text', text: message });
-      }
-
-      let displayMessage = message;
-
-      if (attachments.length > 0) {
-        displayMessage += '\\n\\n附件:\\n';
-        attachments.forEach(att => {
-          if (att.type === 'image') {
-            contentParts.push({
-              type: 'image_url',
-              image_url: { url: att.content }
-            });
-            displayMessage += '[图片: ' + att.name + ']\\n';
-          } else if (att.type === 'link') {
-            contentParts.push({ type: 'text', text: '[链接: ' + att.content + ']' });
-            displayMessage += '[链接: ' + att.content + ']\\n';
-          }
-        });
-      }
-
-      if (!window.chatHistory[chatboxId]) {
-        window.chatHistory[chatboxId] = [];
-        const emptyDiv = messagesDiv.querySelector('.chatbox-empty');
-        if (emptyDiv) emptyDiv.remove();
-      }
-
-      const userMsgDiv = document.createElement('div');
-      userMsgDiv.className = 'chat-message user';
-      userMsgDiv.textContent = displayMessage;
-
-      const copyBtn = document.createElement('button');
-      copyBtn.className = 'chat-message-copy-btn';
-      copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-      copyBtn.onclick = function(e) {
-        e.stopPropagation();
-        window.copyChatMessage(displayMessage);
-      };
-      userMsgDiv.appendChild(copyBtn);
-
-      messagesDiv.appendChild(userMsgDiv);
-
-      const messageContent = contentParts.length > 1 ? contentParts : (contentParts[0]?.text || displayMessage);
-      window.chatHistory[chatboxId].push({ role: 'user', content: messageContent });
-      saveChatHistory();
-
-      input.value = '';
-      window.attachmentData[chatboxId] = [];
-      window.renderAttachments(chatboxId);
-      input.disabled = true;
-      sendBtn.disabled = true;
-
-      const loadingDiv = document.createElement('div');
-      loadingDiv.className = 'chat-message loading';
-      loadingDiv.innerHTML = '<div class="chat-loading-spinner"></div>';
-      messagesDiv.appendChild(loadingDiv);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-      let retryCount = 0;
-      const maxRetries = 3;
-
-      async function attemptSendMessage() {
-        try {
-          const model = input.dataset.model;
-          const systemPrompt = input.dataset.systemprompt;
-
-          const messages = [];
-          if (systemPrompt) {
-            messages.push({ role: 'system', content: systemPrompt });
-          }
-          messages.push(...window.chatHistory[chatboxId].filter(msg => msg.role !== 'reasoning'));
-
-        const response = await fetch(SUPABASE_URL + '/functions/v1/volcengine-ai', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 2000,
-            stream: true
-          })
-        });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error('API错误响应:', errorText);
-            throw new Error('API请求失败: ' + response.status);
-          }
-
-          let reasoningMsgDiv = null;
-          let assistantMsgDiv = null;
-          let reasoningMessage = '';
-          let fullMessage = '';
-          let firstContentReceived = false;
-
-          const reader = response.body.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-                if (data === '[DONE]') {
-                  break;
-                }
-
-                try {
-                  const parsed = JSON.parse(data);
-                  const delta = parsed.choices?.[0]?.delta;
-
-                  if (delta && (delta.reasoning_content || delta.thinking_content)) {
-                    const reasoningContent = delta.reasoning_content || delta.thinking_content;
-                    reasoningMessage += reasoningContent;
-
-                    if (!firstContentReceived) {
-                      firstContentReceived = true;
-                      if (loadingDiv && loadingDiv.parentNode) {
-                        loadingDiv.remove();
-                      }
-                    }
-
-                    if (!reasoningMsgDiv) {
-                      reasoningMsgDiv = document.createElement('div');
-                      reasoningMsgDiv.className = 'chat-message reasoning';
-                      reasoningMsgDiv.style.cssText = 'background: #fef3c7; border: 1px solid #fbbf24; color: #92400e; max-width: 85%;';
-
-                      const toggleDiv = document.createElement('div');
-                      toggleDiv.className = 'reasoning-toggle';
-                      toggleDiv.innerHTML = '<div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 12px; color: #b45309;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>思维链</div><svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>';
-
-                      const contentDiv = document.createElement('div');
-                      contentDiv.className = 'reasoning-content';
-
-                      toggleDiv.onclick = function() {
-                        if (contentDiv.classList.contains('collapsed')) {
-                          contentDiv.classList.remove('collapsed');
-                          toggleDiv.querySelector('.chevron-icon').innerHTML = '<polyline points="18 15 12 9 6 15"/>';
-                        } else {
-                          contentDiv.classList.add('collapsed');
-                          toggleDiv.querySelector('.chevron-icon').innerHTML = '<polyline points="6 9 12 15 18 9"/>';
-                        }
-                      };
-
-                      reasoningMsgDiv.appendChild(toggleDiv);
-                      reasoningMsgDiv.appendChild(contentDiv);
-                      reasoningMsgDiv._contentDiv = contentDiv;
-
-                      messagesDiv.appendChild(reasoningMsgDiv);
-                    }
-
-                    const contentDiv = reasoningMsgDiv._contentDiv;
-                    if (contentDiv) {
-                      contentDiv.innerHTML = marked.parse(reasoningMessage);
-                    }
-                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                  }
-
-                  if (delta && delta.content) {
-                    const content = delta.content;
-                    fullMessage += content;
-
-                    if (!firstContentReceived) {
-                      firstContentReceived = true;
-                      if (loadingDiv && loadingDiv.parentNode) {
-                        loadingDiv.remove();
-                      }
-                    }
-
-                    if (!assistantMsgDiv) {
-                      assistantMsgDiv = document.createElement('div');
-                      assistantMsgDiv.className = 'chat-message assistant';
-                      assistantMsgDiv.innerHTML = '';
-                      messagesDiv.appendChild(assistantMsgDiv);
-                    }
-
-                    const parsedHTML = marked.parse(fullMessage);
-                    assistantMsgDiv.innerHTML = parsedHTML;
-
-                    let copyBtn = assistantMsgDiv.querySelector('.chat-message-copy-btn');
-                    if (!copyBtn) {
-                      copyBtn = document.createElement('button');
-                      copyBtn.className = 'chat-message-copy-btn';
-                      copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
-                      assistantMsgDiv.appendChild(copyBtn);
-                    }
-                    copyBtn.onclick = function(e) {
-                      e.stopPropagation();
-                      window.copyChatMessage(fullMessage);
-                    };
-
-                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-                  }
-                } catch (e) {
-                  console.warn('解析SSE数据失败:', data);
-                }
-              }
-            }
-          }
-
-          if (reasoningMessage) {
-            window.chatHistory[chatboxId].push({ role: 'reasoning', content: reasoningMessage });
-          }
-          if (fullMessage) {
-            window.chatHistory[chatboxId].push({ role: 'assistant', content: fullMessage });
-          }
-          saveChatHistory();
-
-          input.disabled = false;
-          sendBtn.disabled = false;
-          input.focus();
-
-        } catch (error) {
-          console.error('AI对话错误 (尝试 ' + (retryCount + 1) + '/' + maxRetries + '):', error);
-          retryCount++;
-
-          if (retryCount < maxRetries) {
-            if (loadingDiv && loadingDiv.parentNode) {
-              loadingDiv.innerHTML = '<div class="chat-loading-spinner"></div>';
-            }
-
-            const retryMsgDiv = document.createElement('div');
-            retryMsgDiv.className = 'chat-message assistant';
-            retryMsgDiv.style.cssText = 'background: #fef3c7; border-color: #fbbf24; color: #92400e; font-size: 13px; padding: 8px 12px;';
-            retryMsgDiv.textContent = '连接失败，正在重试 (' + retryCount + '/' + maxRetries + ')...';
-            messagesDiv.appendChild(retryMsgDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            retryMsgDiv.remove();
-            return attemptSendMessage();
-          } else {
-            if (loadingDiv && loadingDiv.parentNode) {
-              loadingDiv.remove();
-            }
-
-            const errorMsgDiv = document.createElement('div');
-            errorMsgDiv.className = 'chat-message assistant';
-            errorMsgDiv.style.cssText = 'background: #fee2e2; border-color: #ef4444; color: #991b1b;';
-            errorMsgDiv.textContent = '抱歉，连接失败。已重试 ' + maxRetries + ' 次，请稍后再试。';
-            messagesDiv.appendChild(errorMsgDiv);
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-            input.disabled = false;
-            sendBtn.disabled = false;
-            input.focus();
-          }
-        }
-      }
-
-      await attemptSendMessage();
-    };
-
-    document.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter' && e.target.classList.contains('chatbox-input')) {
-        const chatboxId = e.target.id.replace('input_', '');
-        window.sendChatMessage(chatboxId);
-      }
-    });
-
-    window.generateHTML = async function(componentId) {
-      const config = window.generatorConfig[componentId];
-      if (!config) return;
-
-      const paramValues = {};
-      let hasError = false;
-
-      config.parameters.forEach(param => {
-        const input = document.getElementById('param_' + componentId + '_' + param.name);
-        const value = input ? input.value.trim() : '';
-
-        if (param.required && !value) {
-          alert('请填写必填项：' + param.name);
-          hasError = true;
-          return;
-        }
-
-        paramValues[param.name] = value;
-      });
-
-      if (hasError) return;
-
-      let promptText = config.promptTemplate;
-      Object.keys(paramValues).forEach(key => {
-        const regex = new RegExp('\\\\{\\\\{' + key + '\\\\}\\\\}', 'g');
-        promptText = promptText.replace(regex, paramValues[key]);
-      });
-
-      const genBtn = document.getElementById('genBtn_' + componentId);
-      const outputDiv = document.getElementById('output_' + componentId);
-      const renderDiv = document.getElementById('render_' + componentId);
-
-      genBtn.disabled = true;
-      genBtn.textContent = '正在生成...';
-      outputDiv.style.display = 'block';
-      outputDiv.innerHTML = '<p style="color: #06b6d4; font-weight: 600;">AI 正在生成中...</p>';
-
-      try {
-        const response = await fetch(SUPABASE_URL + '/functions/v1/volcengine-ai', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            model: config.model,
-            messages: [{ role: 'user', content: promptText }],
-            max_tokens: 32000,
-            stream: true
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('生成失败');
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let fullOutput = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') {
-                break;
-              }
-
-              try {
-                const parsed = JSON.parse(data);
-                if (parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.content) {
-                  const text = parsed.choices[0].delta.content;
-                  fullOutput += text;
-                  outputDiv.innerHTML = '<pre style="font-size: 12px; white-space: pre-wrap; font-family: monospace;">' + fullOutput + '</pre>';
-
-                  const htmlMatch = fullOutput.match(/\`\`\`html\\n([\\s\\S]*?)\\n\`\`\`/);
-                  if (htmlMatch) {
-                    const html = htmlMatch[1];
-                    const iframe = document.getElementById('iframe_' + componentId);
-                    const isFullDoc = /<!DOCTYPE|<html/i.test(html);
-                    let finalHtml = html;
-                    if (!isFullDoc) {
-                      finalHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body { margin: 0; padding: 16px; font-family: system-ui, -apple-system, sans-serif; }</style></head><body>' + html + '</body></html>';
-                    }
-                    iframe.srcdoc = finalHtml;
-                    renderDiv.style.display = 'block';
-                  }
-                }
-              } catch (e) {
-                console.warn('解析失败:', e);
-              }
-            }
-          }
-        }
-
-        genBtn.disabled = false;
-        genBtn.textContent = config.buttonText || '生成 HTML 游戏';
-        outputDiv.innerHTML = '<p style="color: #10b981; font-weight: 600;">✓ 生成完成</p>';
-      } catch (error) {
-        console.error('生成错误:', error);
-        genBtn.disabled = false;
-        genBtn.textContent = config.buttonText || '生成 HTML 游戏';
-        outputDiv.innerHTML = '<p style="color: #ef4444; font-weight: 600;">✗ 生成失败，请重试</p>';
-      }
-    };
-
-    window.clearGeneratedHTML = function(componentId) {
-      const renderDiv = document.getElementById('render_' + componentId);
-      const outputDiv = document.getElementById('output_' + componentId);
-      const iframe = document.getElementById('iframe_' + componentId);
-
-      renderDiv.style.display = 'none';
-      outputDiv.style.display = 'none';
-      outputDiv.innerHTML = '';
-
-      iframe.srcdoc = '';
-    };
-
-    window.submitAnswers = async function() {
-      const studentClass = document.getElementById('studentClass').value.trim();
-      const studentName = document.getElementById('studentName').value.trim();
+    window.submitAnswers = function() {
+      const studentClass = document.getElementById('studentClass')?.value?.trim();
+      const studentName = document.getElementById('studentName')?.value?.trim();
       const messageDiv = document.getElementById('message');
-      const submitBtn = document.querySelector('.submit-btn');
 
       if (!studentClass || !studentName) {
         messageDiv.innerHTML = '<div class="error">请填写班级和姓名</div>';
         return;
       }
 
-      const answers = {};
-      ${answerCollectionCode}
+      saveToLocalStorage();
+      messageDiv.innerHTML = '<div class="success">答案已保存到本地！</div>';
+      document.querySelector('.submit-btn').textContent = '已保存';
+    };
 
-      const chatHistory = window.chatHistory || {};
-      const hasChatHistory = Object.keys(chatHistory).some(key => chatHistory[key] && chatHistory[key].length > 0);
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = '提交中...';
-
-      let retryCount = 0;
-      const maxRetries = 999;
-      const retryDelay = 3000;
-
-      async function attemptSubmit() {
-        try {
-          retryCount++;
-          if (retryCount > 1) {
-            messageDiv.innerHTML = '<div class="error">提交失败，正在重试 (第 ' + retryCount + ' 次尝试)...</div>';
-          }
-
-          const submissionData = {
-            lesson_task_id: TASK_ID,
-            student_name: studentName,
-            student_class: studentClass,
-            seat_number: null,
-            answers: answers
-          };
-
-          if (hasChatHistory) {
-            submissionData.chat_history = chatHistory;
-          }
-
-          const { error } = await supabaseClient
-            .from('student_submissions')
-            .insert(submissionData);
-
-          if (error) throw error;
-
-          messageDiv.innerHTML = '<div class="success">提交成功！感谢您的参与' + (hasChatHistory ? '（包含AI对话记录）' : '') + '</div>';
-          submitBtn.textContent = '已提交';
-          document.getElementById('studentClass').disabled = true;
-          document.getElementById('studentName').disabled = true;
-        } catch (error) {
-          console.error('提交失败 (第 ' + retryCount + ' 次):', error);
-
-          if (retryCount < maxRetries) {
-            messageDiv.innerHTML = '<div class="error">提交失败，' + (retryDelay / 1000) + ' 秒后自动重试 (第 ' + retryCount + ' 次尝试)...</div>';
-            setTimeout(attemptSubmit, retryDelay);
-          } else {
-            messageDiv.innerHTML = '<div class="error">提交失败次数过多，请联系老师</div>';
-            submitBtn.disabled = false;
-            submitBtn.textContent = '重新提交';
-          }
-        }
-      }
-
-      await attemptSubmit();
-    }
-
-    const CHANNEL_NAME = 'lesson-control:' + TASK_ID;
-    const POLL_INTERVAL = 3000;
-    const HEARTBEAT_TIMEOUT = 10000;
-    const INIT_TIMEOUT = 5000;
-    let controlChannel = null;
-    let pollTimer = null;
-    let heartbeatTimer = null;
-    let lastKnownPage = 0;
-    let controlEnabled = false;
-    let lastHeartbeat = 0;
-    let initialized = false;
-
-    async function initializeControl() {
-      try {
-        console.log('[流程控制] 正在初始化...');
-        const { data, error } = await supabaseClient
-          .from('lesson_controls')
-          .select('*')
-          .eq('task_id', TASK_ID)
-          .maybeSingle();
-
-        if (error) {
-          console.error('[流程控制] 获取控制状态失败:', error);
-          updateControlStatus('离线模式');
-          return;
-        }
-
-        if (!data) {
-          console.log('[流程控制] 未找到控制记录');
-          updateControlStatus('等待开启');
-          return;
-        }
-
-        console.log('[流程控制] 控制状态:', data);
-
-        if (data.control_enabled) {
-          controlEnabled = true;
-          lastHeartbeat = data.updated_at ? new Date(data.updated_at).getTime() : Date.now();
-          showControlBanner();
-          lastKnownPage = data.current_page || 0;
-          if (HAS_PAGINATION && lastKnownPage !== currentPage) {
-            console.log('[流程控制] 同步到页面:', lastKnownPage);
-            navigateToPageDirectly(lastKnownPage);
-          } else {
-            console.log('[流程控制] 已在正确页面:', currentPage);
-          }
-          updateControlStatus('已连接');
-          startHeartbeatCheck();
-        } else {
-          controlEnabled = false;
-          hideControlBanner();
-          console.log('[流程控制] 控制已禁用');
-        }
-      } catch (err) {
-        console.error('[流程控制] 初始化失败:', err);
-        updateControlStatus('连接失败');
-      } finally {
-        finishInitialization();
-      }
-    }
-
-    function finishInitialization() {
-      if (initialized) return;
-      initialized = true;
-      console.log('[流程控制] 初始化完成，controlEnabled =', controlEnabled);
-
-      const overlay = document.getElementById('loadingOverlay');
-      const content = document.getElementById('mainContent');
-
-      if (overlay) {
-        overlay.style.opacity = '0';
-        overlay.style.transition = 'opacity 0.3s ease';
-        setTimeout(() => {
-          overlay.style.display = 'none';
-        }, 300);
-      }
-
-      if (content) {
-        content.style.display = 'block';
-        setTimeout(() => {
-          content.style.opacity = '1';
-          content.style.transition = 'opacity 0.3s ease';
-
-          setTimeout(() => {
-            updateNavigationButtons();
-            updateSubmitSection();
-            console.log('[流程控制] 按钮状态已更新');
-          }, 100);
-        }, 50);
-      }
-    }
-
-    function showControlBanner() {
-      const banner = document.getElementById('controlBanner');
-      if (banner) {
-        banner.style.display = 'block';
-      }
-    }
-
-    function hideControlBanner() {
-      const banner = document.getElementById('controlBanner');
-      if (banner) {
-        banner.style.display = 'none';
-      }
-    }
-
-    function updateControlStatus(status) {
-      const statusEl = document.getElementById('controlStatus');
-      if (statusEl) {
-        statusEl.textContent = '(' + status + ')';
-      }
-    }
-
-    function startHeartbeatCheck() {
-      if (heartbeatTimer) {
-        clearInterval(heartbeatTimer);
-      }
-
-      heartbeatTimer = setInterval(() => {
-        const now = Date.now();
-        const elapsed = now - lastHeartbeat;
-
-        if (elapsed > HEARTBEAT_TIMEOUT) {
-          console.log('[流程控制] 心跳超时，自动关闭控制模式');
-          controlEnabled = false;
-          hideControlBanner();
-          updateNavigationButtons();
-          updateControlStatus('连接已断开');
-          stopHeartbeatCheck();
-        }
-      }, 2000);
-    }
-
-    function stopHeartbeatCheck() {
-      if (heartbeatTimer) {
-        clearInterval(heartbeatTimer);
-        heartbeatTimer = null;
-      }
-    }
-
-    function updateNavigationButtons() {
-      if (!HAS_PAGINATION) return;
-
-      const prevBtn = document.getElementById('prevBtn');
-      const nextBtn = document.getElementById('nextBtn');
-
-      if (controlEnabled) {
-        prevBtn.disabled = true;
-        nextBtn.disabled = true;
-        prevBtn.title = '教师控制模式下无法手动翻页';
-        nextBtn.title = '教师控制模式下无法手动翻页';
-        prevBtn.onclick = function() { return false; };
-        nextBtn.onclick = function() { return false; };
-      } else {
-        prevBtn.disabled = currentPage === 0;
-        nextBtn.disabled = currentPage === TOTAL_PAGES - 1;
-        prevBtn.title = '';
-        nextBtn.title = '';
-        prevBtn.onclick = function() { changePage(-1); };
-        nextBtn.onclick = function() { changePage(1); };
-      }
-    }
-
-    function navigateToPageDirectly(page) {
-      if (!HAS_PAGINATION) return;
-
-      const allPages = document.querySelectorAll('.page');
-      if (page < 0 || page >= TOTAL_PAGES) return;
-
-      allPages[currentPage].style.display = 'none';
-      allPages[page].style.display = 'block';
-      currentPage = page;
-
-      document.getElementById('pageInfo').textContent = '第 ' + (currentPage + 1) + ' / ' + TOTAL_PAGES + ' 页';
+    function initializeApp() {
+      loadFromLocalStorage();
       updateNavigationButtons();
       updateSubmitSection();
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
 
-    function subscribeToControl() {
-      try {
-        console.log('[流程控制] 订阅频道:', CHANNEL_NAME);
-        controlChannel = supabaseClient.channel(CHANNEL_NAME);
-
-        controlChannel
-          .on('broadcast', { event: 'control' }, ({ payload }) => {
-            console.log('[流程控制] 收到广播消息:', payload);
-
-            if (payload.type === 'navigate' && typeof payload.page === 'number') {
-              console.log('[流程控制] 广播导航到页面:', payload.page);
-              lastKnownPage = payload.page;
-              if (payload.page !== currentPage) {
-                navigateToPageDirectly(payload.page);
-                updateControlStatus('已同步 (实时)');
-              }
-            }
-          })
-          .subscribe((status) => {
-            console.log('[流程控制] 频道状态:', status);
-            if (status === 'SUBSCRIBED') {
-              updateControlStatus('实时连接');
-            } else if (status === 'CHANNEL_ERROR') {
-              updateControlStatus('连接错误');
-            } else if (status === 'CLOSED') {
-              updateControlStatus('连接关闭');
-            }
-          });
-      } catch (err) {
-        console.error('[流程控制] 订阅失败:', err);
-        updateControlStatus('订阅失败');
-      }
-    }
-
-    async function pollControlState() {
-      try {
-        const { data, error } = await supabaseClient
-          .from('lesson_controls')
-          .select('current_page, control_enabled')
-          .eq('task_id', TASK_ID)
-          .maybeSingle();
-
-        if (error) {
-          console.error('[流程控制] 轮询失败:', error);
-          return;
-        }
-
-        if (!data) {
-          console.log('[流程控制] 轮询: 无数据');
-          if (controlEnabled) {
-            controlEnabled = false;
-            hideControlBanner();
-            updateNavigationButtons();
-          }
-          return;
-        }
-
-        if (data.control_enabled !== controlEnabled) {
-          console.log('[流程控制] 控制状态变化:', controlEnabled, '->', data.control_enabled);
-          controlEnabled = data.control_enabled;
-          if (controlEnabled) {
-            showControlBanner();
-            updateControlStatus('已连接');
-            startHeartbeatCheck();
-          } else {
-            hideControlBanner();
-            stopHeartbeatCheck();
-          }
-          updateNavigationButtons();
-        }
-
-        if (data.control_enabled) {
-          lastHeartbeat = data.updated_at ? new Date(data.updated_at).getTime() : Date.now();
-
-          if (typeof data.current_page === 'number') {
-            if (data.current_page !== lastKnownPage) {
-              console.log('[流程控制] 检测到页面变化:', lastKnownPage, '->', data.current_page);
-              lastKnownPage = data.current_page;
-              if (data.current_page !== currentPage) {
-                navigateToPageDirectly(data.current_page);
-                updateControlStatus('已同步 (轮询)');
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[流程控制] 轮询异常:', err);
-      }
-    }
-
-    function startPolling() {
-      console.log('[流程控制] 开始轮询，间隔:', POLL_INTERVAL, 'ms');
-      pollControlState();
-      pollTimer = setInterval(pollControlState, POLL_INTERVAL);
-    }
-
-    function stopPolling() {
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
-    }
-
-    if (HAS_PAGINATION) {
-      setTimeout(() => {
-        if (!initialized) {
-          console.log('[流程控制] 初始化超时，强制显示内容');
-          finishInitialization();
-        }
-      }, INIT_TIMEOUT);
-
-      initializeControl();
-      subscribeToControl();
-      startPolling();
-
-      window.addEventListener('beforeunload', () => {
-        stopPolling();
-        stopHeartbeatCheck();
-        if (controlChannel) {
-          controlChannel.unsubscribe();
+      // Auto-save on input changes
+      document.addEventListener('change', saveToLocalStorage);
+      document.addEventListener('input', function(e) {
+        if (e.target.matches && (e.target.matches('textarea') || e.target.matches('input[type="text"]'))) {
+          saveToLocalStorage();
         }
       });
-    } else {
-      finishInitialization();
-    }
+
+      // Show content
+      const overlay = document.getElementById('loadingOverlay');
+      const content = document.getElementById('mainContent');
+      if (overlay) { overlay.style.display = 'none'; }
+      if (content) { content.style.display = 'block'; content.style.opacity = '1'; }
     }
 
     if (document.readyState === 'loading') {
